@@ -1,0 +1,10 @@
+# 버전 고정 — 업데이트로 두 번 고장남(httpx 누락·google-genai v1 전환). 올릴 땐 dry_run으로 확인 후
+edge-tts==7.3.1
+imageio-ffmpeg==0.6.0
+requests==2.34.2
+httpx==0.28.1
+google-api-python-client==2.201.0
+google-auth-oauthlib==1.5.0
+google-auth-httplib2==0.4.4
+google-genai==3.0.0
+faster-whisper==1.2.1

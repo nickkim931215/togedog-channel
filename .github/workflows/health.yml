@@ -1,0 +1,68 @@
+name: togedog health check
+
+# 매일 자가 점검 → 문제 있을 때만 대표님 디스코드 DM. 일요일엔 주간 보고 + 시험 제작(dry_run) 1편.
+on:
+  schedule:
+    - cron: "20 2 * * *"  # KST 11:20 — 점심·저녁편이 비었으면 아직 손쓸 시간이 있을 때
+  workflow_dispatch:
+    inputs:
+      weekly:
+        description: "주간 보고도 보내기 (디스코드 알림 테스트용)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: write   # 일요일 시험 제작(autopilot dry_run) 실행용
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # 영상 제작용 무거운 패키지(faster-whisper 등)는 빼고 점검에 필요한 것만
+      - name: Install packages
+        run: pip install -q $(grep -E "^(requests|httpx|google-)" requirements.txt)
+
+      - name: Write credentials
+        env:
+          CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          TOKEN: ${{ secrets.YT_TOKEN_TOGEDOG }}
+        run: |
+          printf '%s' "$CLIENT_SECRET" > client_secret.json
+          printf '%s' "$TOKEN" > token_togedog.json
+          sed -i '1s/^\xEF\xBB\xBF//' client_secret.json token_togedog.json
+
+      - name: Check
+        run: |
+          if [ "$(TZ=Asia/Seoul date +%u)" = "7" ] || [ "${{ inputs.weekly }}" = "true" ]; then
+            python healthcheck.py --weekly
+          else
+            python healthcheck.py
+          fi
+
+      - name: Weekly test production (Sunday)
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(TZ=Asia/Seoul date +%u)" = "7" ]; then
+            gh workflow run autopilot.yml -R "$GITHUB_REPOSITORY" -f dry_run=true && echo "시험 제작 시작"
+          fi
+
+      - name: Alert if the check itself broke
+        if: failure()
+        run: python alert.py "⚠️ 투게독 쇼츠 자가 점검이 오류로 끝났어요. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} — Claude에게 '투게독 불러와' 하고 알려주세요."

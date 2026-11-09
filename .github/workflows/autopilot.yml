@@ -1,0 +1,161 @@
+name: togedog autopilot
+
+on:
+  # 예약 대기열 채우기: 앞으로 공개될 회차(08:00/12:00/20:00 KST) 중 빈 것만 만들어 유튜브 예약 공개로 올림.
+  # 캄모니(:17/:47분)와 다른 분(:37)에 돌림. 여러 번 걸어둔 건 실패 대비 — 다 차 있으면 1분 안에 끝남.
+  schedule:
+    - cron: "37 11 * * *"  # KST 20:37 — 다음 날 3편
+    - cron: "37 15 * * *"  # KST 00:37 — 예비
+    - cron: "37 19 * * *"  # KST 04:37 — 예비
+    - cron: "37 1 * * *"   # KST 10:37 — 예비 (점심·저녁편)
+  workflow_dispatch:
+    inputs:
+      now:
+        description: "지금 바로 1편 공개 업로드 (끄면 예약 대기열 채우기)"
+        required: false
+        default: false
+        type: boolean
+      category:
+        description: "카테고리 (비우면 시간대별 랜덤)"
+        required: false
+        type: choice
+        options: ["", breed, walk_tips, behavior, cute]
+      topic:
+        description: "주제 (비우면 AI가 선정)"
+        required: false
+      privacy:
+        description: "공개 설정"
+        required: false
+        default: public
+        type: choice
+        options: [public, unlisted, private]
+      dry_run:
+        description: "영상만 만들고 업로드 안 함 (테스트용)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: autopilot
+  cancel-in-progress: false
+
+jobs:
+  shorts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      QUEUE: ${{ github.event_name == 'schedule' || (inputs.now != true && inputs.dry_run != true && inputs.category == '' && inputs.topic == '') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Check queue
+        id: plan
+        run: |
+          if [ "$QUEUE" = "true" ]; then
+            out=$(python autopilot.py --plan); echo "만들 회차: $out"
+            echo "count=${out%% *}" >> "$GITHUB_OUTPUT"
+          else
+            echo "count=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      # apt 설치는 가끔 오래 멈춰서 GitHub 릴리스의 ffmpeg 빌드(libass 포함)를 받아 캐시
+      - name: Cache ffmpeg
+        if: steps.plan.outputs.count != '0'
+        uses: actions/cache@v4
+        with:
+          path: ~/ffmpeg
+          key: ffmpeg-btbn-v1
+
+      - name: Install ffmpeg
+        if: steps.plan.outputs.count != '0'
+        timeout-minutes: 5
+        run: |
+          if [ ! -x ~/ffmpeg/bin/ffmpeg ]; then
+            curl -fsSL --retry 3 -o /tmp/ff.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
+            mkdir -p ~/ffmpeg && tar xJf /tmp/ff.tar.xz -C ~/ffmpeg --strip-components=1
+          fi
+          echo "$HOME/ffmpeg/bin" >> "$GITHUB_PATH"
+          mkdir -p ~/.local/share/fonts && cp fonts/*.otf ~/.local/share/fonts/ && (fc-cache ~/.local/share/fonts || true)
+          ~/ffmpeg/bin/ffmpeg -hide_banner -filters | grep -q " ass " && echo "ffmpeg OK (libass)"
+
+      - name: Install packages
+        if: steps.plan.outputs.count != '0'
+        run: pip install -q -r requirements.txt
+
+      - name: Cache Whisper model
+        if: steps.plan.outputs.count != '0'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-small-v1
+
+      - name: Write credentials
+        if: steps.plan.outputs.count != '0'
+        env:
+          CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          TOKEN: ${{ secrets.YT_TOKEN_TOGEDOG }}
+        run: |
+          printf '%s' "$CLIENT_SECRET" > client_secret.json
+          printf '%s' "$TOKEN" > token_togedog.json
+          sed -i '1s/^\xEF\xBB\xBF//' client_secret.json token_togedog.json  # BOM 제거
+
+      - name: Make & upload shorts
+        if: steps.plan.outputs.count != '0'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          PYTHONUNBUFFERED: "1"
+          TOPIC: ${{ inputs.topic }}
+          CATEGORY: ${{ inputs.category }}
+          PRIVACY: ${{ inputs.privacy || 'public' }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$QUEUE" = "true" ]; then python autopilot.py --schedule; exit; fi
+          ARGS=(--privacy "$PRIVACY")
+          if [ -n "$TOPIC" ]; then ARGS+=(--topic "$TOPIC"); fi
+          if [ -n "$CATEGORY" ]; then ARGS+=(--category "$CATEGORY"); fi
+          if [ "$DRY_RUN" = "true" ]; then ARGS+=(--no-upload); fi
+          python autopilot.py "${ARGS[@]}"
+
+      # 예약 모드는 여러 편 중 일부만 성공해도 기록해야 다음 실행이 같은 회차를 또 만들지 않음
+      - name: Save history
+        if: always() && steps.plan.outputs.count != '0' && inputs.dry_run != true
+        run: |
+          git config user.name "togedog-bot"
+          git config user.email "nickkim931215@gmail.com"
+          git add history.json
+          git commit -m "history: $(date -u +%F' '%H:%M) upload" || exit 0
+          git pull --rebase -q && git push -q
+
+      # 실패해도 예비 실행이 다시 채우니, 사람이 손써야 할 때(곧 공개될 회차가 빔·로그인 풀림)만 디스코드 DM
+      - name: Alert owner
+        if: failure()
+        continue-on-error: true
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python alert.py "🧪 주간 시험 제작이 실패했어요 — 실제 회차에서도 같은 문제가 날 수 있어요. $RUN_URL 👉 Claude에게 '투게독 불러와' 하고 알려주세요."
+          else
+            pip install -q $(grep -E "^(requests|httpx|google-)" requirements.txt) 2>/dev/null
+            python healthcheck.py --after-failure
+          fi
+
+      - name: Keep video as artifact
+        if: always() && (inputs.dry_run == true || failure())
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorts-${{ github.run_id }}
+          path: output/*.mp4
+          retention-days: 2
+          if-no-files-found: ignore
