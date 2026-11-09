@@ -1,7 +1,7 @@
 """투게독 채널 완전 자동: 주제 선정 → 대본 → 영상 → 예약 업로드 → 기록. (GitHub Actions)
 캄모니(youtube-auto) 코드를 복사해 고친 것 — 캄모니와 저장소 · 비밀값 · 시각 모두 따로.
 
-  python autopilot.py --schedule        # 예약 대기열 채우기 (08:00 / 12:00 / 20:00 KST) — 자동 실행은 이것
+  python autopilot.py --schedule        # 예약 대기열 채우기 (06:30 / 18:00 / 21:00 KST) — 자동 실행은 이것
   python autopilot.py --plan            # 만들 회차 수만 출력
   python autopilot.py --no-upload       # 업로드 없이 1편 시험 제작
   python autopilot.py --category behavior --topic "..."   # 카테고리 · 주제 지정
@@ -48,15 +48,15 @@ CATEGORIES = {
              ["강아지", "귀여운강아지", "댕댕이"]),
 }
 SLOTS = {
-    "morning": ("아침 8시. 출근 · 아침 산책 전후의 보호자들", {"walk_tips": 3, "behavior": 2, "breed": 2, "cute": 2}),
-    "noon": ("점심 12시. 점심시간에 가볍게 보는 사람들", {"cute": 3, "breed": 2, "behavior": 2, "walk_tips": 1}),
-    "night": ("저녁 8시. 저녁 산책 뒤 강아지와 쉬는 보호자들", {"behavior": 3, "cute": 3, "breed": 2, "walk_tips": 1}),
+    "morning": ("아침 6시 반. 일어나서 아침 산책 나가기 전의 보호자들", {"walk_tips": 3, "behavior": 2, "breed": 2, "cute": 2}),
+    "evening": ("저녁 6시. 퇴근길 · 저녁 산책 전에 가볍게 보는 사람들", {"cute": 3, "walk_tips": 2, "breed": 2, "behavior": 2}),
+    "night": ("밤 9시. 저녁 산책 뒤 강아지와 쉬는 보호자들", {"behavior": 3, "cute": 3, "breed": 2, "walk_tips": 1}),
 }
 LABELS = {"breed": "견종 상식", "walk_tips": "산책 꿀팁", "behavior": "행동의 속뜻", "cute": "댕댕이 공감"}
 BASE_TAGS = ["Shorts", "투게독", "강아지"]
-# 유튜브 예약 공개 시각 (KST). 캄모니(07:30/12:30/18:00)와 겹치지 않음
-PUBLISH_TIMES = {"morning": (8, 0), "noon": (12, 0), "night": (20, 0)}
-# 12시 칸은 이틀에 한 번 투게독 플레이 영상 (사장님 11/09 결정). 플레이 영상 제작이 준비되기 전엔 강아지 영상으로 채움
+# 유튜브 예약 공개 시각 (KST) — 사장님 11/09 결정 06:30 / 18:00 / 21:00
+PUBLISH_TIMES = {"morning": (6, 30), "evening": (18, 0), "night": (21, 0)}
+# 18시 칸은 이틀에 한 번 투게독 플레이 영상 (사장님 11/09 결정). 플레이 영상 제작이 준비되기 전엔 강아지 영상으로 채움
 PLAY_READY = False
 HORIZON = timedelta(hours=26)    # 이 시간 안에 공개될 회차만 미리 만듦
 LEAD = timedelta(minutes=25)     # 1편 제작·업로드 여유
@@ -66,7 +66,7 @@ SCENE_RULE = ("\n배경 영상 검색어(scenes)는 모두 강아지 장면으�
 
 
 def is_play_slot(slot: str, at: datetime) -> bool:
-    return slot == "noon" and at.date().toordinal() % 2 == 0
+    return slot == "evening" and at.date().toordinal() % 2 == 0
 
 
 def pick_category(slot: str, history: list[dict]) -> str:
@@ -79,7 +79,7 @@ def pick_category(slot: str, history: list[dict]) -> str:
 
 
 def current_slot(now: datetime) -> str:
-    return "morning" if 4 <= now.hour < 11 else "noon" if 11 <= now.hour < 17 else "night"
+    return "morning" if 4 <= now.hour < 12 else "evening" if 12 <= now.hour < 19 else "night"
 
 
 def load_history() -> list[dict]:
