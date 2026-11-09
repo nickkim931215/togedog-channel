@@ -113,6 +113,24 @@ def _whisper_words(wav: Path, ffmpeg: str):
     return [(w.start, w.end, w.word.strip()) for s in segs for w in s.words]
 
 
+def _trim_tail(wav_path: Path, last_word_end: float):
+    """3.8 TTS는 말이 끝난 뒤 짧은 무음 다음에 최대 음량 지직 소리(약 0.2초)를 붙임(11/09 확인)
+    → 마지막 단어 뒤 첫 무음에서 자르고 짧게 페이드아웃."""
+    import numpy as np
+    with wave.open(str(wav_path)) as w:
+        sr, a = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32)
+    win = sr // 20  # 50ms
+    cut = min(len(a), int((last_word_end + 0.3) * sr))
+    for i in range(int(last_word_end * sr), min(len(a), int((last_word_end + 0.8) * sr)) - win, win // 2):
+        if np.sqrt((a[i:i + win] ** 2).mean()) < 300:  # 거의 무음 (16bit 기준 약 1%)
+            cut = i
+            break
+    fade = min(cut, sr // 33)
+    a = a[:cut].copy()
+    a[cut - fade:] *= np.linspace(1, 0, fade)
+    _write_pcm(a.astype(np.int16).tobytes(), wav_path)
+
+
 def _chars(s: str) -> str:
     return re.sub(r"[^\w]", "", s)
 
@@ -193,6 +211,8 @@ def narrate(sentences: list[str], out_wav: Path, ffmpeg: str, tone: str | None =
         print(f"  ⚠ 낭독에 대본에 없는 말이 섞임 (들린 글자 {extra:.0%}) → 다시 녹음")
     else:
         raise RuntimeError("낭독에 대본에 없는 말이 계속 섞임")
+    if heard:
+        _trim_tail(out_wav, heard[-1][1])
     timed, ratio = align(sentences, heard)
     print(f"  🎙 TTS {name} ({model}), 대본 일치율 {ratio:.0%}")
     report("edit", f"싱크 완료! 대본 일치율 {ratio:.0%}", "whisper")
