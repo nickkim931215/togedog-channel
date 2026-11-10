@@ -181,7 +181,7 @@ localStorage.setItem("togedog-lang", "ko"); localStorage.setItem("togedog-lite",
 
 def plan(seed: int, base: str = APP) -> dict:
     r = random.Random(seed)
-    n = r.choice([r.randint(6, 14), r.randint(18, 30), r.randint(32, 50)])  # 한산 · 보통 · 북적
+    n = r.choice([r.randint(8, 14), r.randint(18, 30), r.randint(32, 50)])  # 한산 · 보통 · 북적 (촬영 자리 가까운 사람부터 나옴)
     picks = r.sample(list(SCENES), r.choice([3, 4]))
     return {
         "seed": seed, "base": base, "n": n, "talk": 8,
