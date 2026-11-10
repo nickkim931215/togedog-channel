@@ -233,13 +233,77 @@ def _dur(path: Path) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
 
-def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path):
-    """자르기 · 장면 사이 부드럽게(xfade) · 자막 · 마무리 화면 · 게임 음악."""
+SCRIPT_PROMPT = """너는 유튜브 쇼츠 '투게독' 채널의 내레이터 대본 작가야.
+투게독 = 내 강아지와 함께 동네 · 한강을 걷는 3D 산책 게임 (폰 브라우저에서 바로, 설치 없음).
+아래는 방금 찍은 게임 플레이 영상의 장면 순서야. 장면마다 내레이션 한 문장씩 써 줘.
+
+장면 (순서대로, 길이):
+{scenes}
+분위기: 동네에 다른 보호자 {n}명 ({crowd}), {time}. 내 캐릭터 '{owner}', 강아지 '{pet}'.
+
+규칙:
+- sentences 는 정확히 {count}개, 장면 순서와 1:1. 각 문장은 그 장면 길이 안에 읽히게 한국어 {chars_each}자 안쪽.
+- 마지막 문장(마무리 장면)은 '투게독'을 부르며 해 보라고 권하기 (링크 · 주소 말하지 않기).
+- 친구에게 내 산책을 보여 주듯 밝고 다정한 브이로그 말투, 존댓말. 과장 광고 · 1등 같은 표현 금지. 이모지 금지.
+- title: 쇼츠 제목 25자 안쪽 (이모지 1개까지), description: 2문장, tags: 5개 (# 없이).
+JSON: {{"title": "...", "sentences": ["..."], "description": "...", "tags": ["..."]}}"""
+
+SCENE_DESC = {"walk": "공원 광장을 강아지와 걷기", "talk": "지나가는 이웃에게 '안녕하세요' 말풍선 인사",
+              "photo": "한강 다리 앞에서 사진 모드로 강아지와 사진 찍기", "futsal": "한강 풋살장에서 풋살 (강아지들은 펜스 밖 구경)",
+              "dogpark": "반려견 놀이터 벤치에 앉으니 강아지들끼리 뛰어놂", "river": "한강 산책로 따라 걷기",
+              "auto": "자동 산책", "ending": "마무리: 동네 전체를 멀리서 + 투게독 로고"}
+
+
+def write_play_script(cfg: dict, names: list[str], lens: list[float]) -> dict:
+    """찍힌 장면에 맞춘 내레이션 대본 (Gemini)."""
+    from google import genai
+    from google.genai import types
+    from script_writer import FALLBACK_MODELS, HTTP, _generate
+    from settings import load_env
+    load_env()
+    n = cfg["n"]
+    prompt = SCRIPT_PROMPT.format(
+        scenes="\n".join(f"{i + 1}. {SCENE_DESC.get(k, k)} ({l:.0f}초)" for i, (k, l) in enumerate(zip(names, lens))),
+        n=n, crowd="한산함" if n < 15 else "북적북적" if n >= 32 else "적당히 붐빔",
+        time="저녁 노을 · 가로등" if cfg["time"] == "night" else "맑은 낮",
+        owner=cfg["owner"], pet=cfg["pet"], count=len(names), chars_each=int(min(lens) * 5.5))
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=HTTP)
+    resp = _generate(client, FALLBACK_MODELS, prompt,
+                     types.GenerateContentConfig(response_mime_type="application/json", temperature=0.9))
+    data = json.loads(resp.text)
+    data["sentences"] = [x.strip() for x in data["sentences"] if x.strip()]
+    if len(data["sentences"]) != len(names):
+        raise RuntimeError(f"대본 문장 수가 장면 수와 다름 ({len(data['sentences'])} != {len(names)})")
+    return data
+
+
+def narration(sentences: list[str], work: Path, tone: str):
+    """낭독 → (wav, [(시작, 끝, 문장)], 목소리) — 강아지 쇼츠와 같은 Gemini 목소리 · 끝 잡음 자르기 · 싱크."""
+    from voice_gemini import narrate
+    wav = work / "voice.wav"
+    timed, voice = narrate(sentences, wav, FFMPEG, tone)
+    spans = [(w[0][0], w[-1][1], s) for w, s in zip(timed, sentences) if w]
+    return wav, spans, voice
+
+
+def wrap(s: str, n: int = 14) -> list[str]:
+    """자막 두 줄 나누기 (띄어쓰기 기준, 가운데에 가깝게)."""
+    if len(s) <= n:
+        return [s]
+    cut = [i for i, c in enumerate(s) if c == " "]
+    if not cut:
+        return [s]
+    i = min(cut, key=lambda i: abs(i - len(s) / 2))
+    return [s[:i], s[i + 1:]]
+
+
+def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path, voice: tuple[Path, list] | None = None):
+    """장면 사이 부드럽게(xfade) · 자막 · 마무리 화면 · 게임 음악 (+ 내레이션이 있으면 말에 맞춘 자막 · 음악 작게)."""
     fade = 0.4
     font = FONT.name  # 필터에 C: 가 들어가면 깨져서 글꼴 폴더에서 실행
     # 자막 글꼴(Pretendard)엔 이모지가 없어 네모로 나옴 → 자막에선 이모지 빼기 (제목 · 설명엔 그대로)
-    plain = lambda s: re.sub(r"[\U0001F000-\U0001FFFF☀-➿️‍]", "", s).strip()
-    esc = lambda s: plain(s).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+    plain = lambda s: re.sub("[\U0001F000-\U0001FFFF☀-➿️‍]", "", s).strip()
+    esc = lambda s: plain(s).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
 
     def text(t, size, color, border, y, extra=""):
         return (f"drawtext=fontfile='{font}':text='{esc(t)}':fontsize={size}:fontcolor={color}:borderw={max(3, size // 11)}"
@@ -249,24 +313,50 @@ def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path):
     for path, _ in clips:
         args += ["-i", str(path.resolve())]
         lens.append(_dur(path))
+    total = sum(lens) - fade * (len(clips) - 1)
+    # 내레이션이 영상보다 길면 마무리 화면을 늘림 (마지막 장 멈춤)
+    extra = 0.0
+    if voice:
+        extra = max(0.0, max(e for _, e, _ in voice[1]) + 0.8 - total)
+        total += extra
     args += ["-ss", str(cfg["bgm_from"]), "-i", str(BGM.resolve())]
+    if voice:
+        args += ["-i", str(voice[0].resolve())]
+    last = len(clips) - 1
     for i, (_, cap) in enumerate(clips):
         chain = ["setpts=PTS-STARTPTS", "scale=1080:1920", f"fps={FPS}", "format=yuv420p"]
-        if i == 0:
-            chain.append(text(headline(cfg), 70, "white", "0xf97316", "h*0.16", ":enable='lt(t,2.6)'"))
-        if cap:
-            chain.append(text(cap, 72, "white", "0x3b2a1a", "h*0.60", ":alpha='if(lt(t,0.25),t/0.25,1)'"))
-        if i == len(clips) - 1:
+        if i == last and extra:
+            chain.append(f"tpad=stop_mode=clone:stop_duration={extra:.2f}")
+        if not voice:
+            if i == 0:
+                chain.append(text(headline(cfg), 70, "white", "0xf97316", "h*0.16", ":enable='lt(t,2.6)'"))
+            if cap:
+                chain.append(text(cap, 72, "white", "0x3b2a1a", "h*0.60", ":alpha='if(lt(t,0.25),t/0.25,1)'"))
+        if i == last:
             chain += ["drawbox=x=0:y=0:w=iw:h=ih:color=black@0.35:t=fill:enable='gte(t,0.6)'",
-                      text("투게독", 170, "white", "0xf97316", "h*0.36", ":enable='gte(t,0.6)'"),
-                      text("우리 아이와 함께 걷는 동네", 64, "white", "0x3b2a1a", "h*0.36+220", ":enable='gte(t,0.9)'"),
-                      text("togedog.app", 84, "0xfde68a", "0x3b2a1a", "h*0.36+330", ":enable='gte(t,1.2)'")]
+                      text("투게독", 170, "white", "0xf97316", "h*0.30", ":enable='gte(t,0.6)'"),
+                      text("우리 아이와 함께 걷는 동네", 64, "white", "0x3b2a1a", "h*0.30+220", ":enable='gte(t,0.9)'"),
+                      text("togedog.app", 84, "0xfde68a", "0x3b2a1a", "h*0.30+330", ":enable='gte(t,1.2)'")]
         f.append(f"[{i}:v]{','.join(chain)}[v{i}]")
-    prev, total = "v0", lens[0]
+    prev, t = "v0", lens[0]
     for i in range(1, len(clips)):
-        f.append(f"[{prev}][v{i}]xfade=transition=fade:duration={fade}:offset={total - fade:.3f}[x{i}]")
-        prev, total = f"x{i}", total + lens[i] - fade
-    f.append(f"[{len(clips)}:a]atrim=duration={total:.3f},afade=t=in:d=0.5,afade=t=out:st={total - 1.5:.3f}:d=1.5,volume=0.8[a]")
+        f.append(f"[{prev}][v{i}]xfade=transition=fade:duration={fade}:offset={t - fade:.3f}[x{i}]")
+        prev, t = f"x{i}", t + lens[i] - fade
+    if voice:
+        # 말하는 동안 자막 (영상 전체 시간 기준, 두 줄까지)
+        subs = []
+        for s0, s1, line in voice[1]:
+            rows = wrap(plain(line))
+            for k, row in enumerate(rows):
+                y = f"h*0.62+{(k - (len(rows) - 1) / 2) * 92:.0f}"
+                subs.append(text(row, 74, "white", "0x3b2a1a", y, f":enable='between(t,{s0:.2f},{s1 + 0.25:.2f})'"))
+        f.append(f"[{prev}]{','.join(subs)}[vout]")
+        prev = "vout"
+        f += [f"[{len(clips)}:a]atrim=duration={total:.3f},volume=0.22,afade=t=in:d=0.5,afade=t=out:st={total - 1.5:.3f}:d=1.5[m]",
+              f"[{len(clips) + 1}:a]aresample=44100,apad,atrim=duration={total:.3f}[n]",
+              "[m][n]amix=inputs=2:duration=first:normalize=0[a]"]
+    else:
+        f.append(f"[{len(clips)}:a]atrim=duration={total:.3f},afade=t=in:d=0.5,afade=t=out:st={total - 1.5:.3f}:d=1.5,volume=0.8[a]")
     args += ["-filter_complex", ";".join(f), "-map", f"[{prev}]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium",
              "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(out.resolve())]
     subprocess.run(args, cwd=FONT.parent, check=True)
@@ -275,9 +365,11 @@ def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path):
 
 TITLES = ["강아지랑 한강 산책하는 게임 🐶", "우리 강아지랑 동네 한 바퀴 🐾", "강아지 키우면 꼭 해봐야 할 게임",
           "이웃 댕댕이들과 산책하는 3D 게임", "오늘의 투게독 산책 로그 🐕", "강아지랑 같이 걷는 동네가 있다?"]
+TONE = "밝고 다정하게, 친구에게 내 산책 브이로그를 보여 주듯 신나게"
 
 
-def make_play(out: Path, seed: int | None = None, base: str = APP, headed=False, scenes: list[str] | None = None) -> dict:
+def make_play(out: Path, seed: int | None = None, base: str = APP, headed=False, scenes: list[str] | None = None,
+              voice: bool = True, reuse: bool = False) -> dict:
     seed = seed if seed is not None else int(time.time()) % 1_000_000
     cfg = plan(seed, base)
     if scenes:  # 시험: 장면 직접 고르기
@@ -285,19 +377,35 @@ def make_play(out: Path, seed: int | None = None, base: str = APP, headed=False,
         cfg["scenes"] = [(s, r.choice(SCENES[s][0]), r.choice(SCENES[s][1])) for s in scenes]
     print(f"▶ 플레이 영상 씨앗 {seed}: 사람 {cfg['n']}명 · {cfg['time']} · 장면 {[s for s, _, _ in cfg['scenes']]}")
     work = BASE / "cache" / f"play_{seed}"
-    clips = shoot(cfg, work, headed)
-    secs = edit(clips, cfg, out)
-    print(f"  ✅ {out.name} ({secs:.1f}초)")
-    caps = [c for _, c in clips if c]
+    if reuse:  # 시험: 찍어 둔 장면으로 편집만
+        caps = {s: c for s, _, c in cfg["scenes"]}
+        clips = [(p, caps.get(p.stem.split("_", 1)[1])) for p in sorted(work.glob("[0-9][0-9]_*.mp4"))]
+    else:
+        clips = shoot(cfg, work, headed)
     r = random.Random(seed)
-    return {
+    meta = {
         "title": r.choice(TITLES),
-        "sentences": [headline(cfg)] + caps,
+        "sentences": [headline(cfg)] + [c for _, c in clips if c],
         "description": "내 강아지와 함께 걷는 3D 산책 게임, 투게독! 이웃 강아지들을 만나고, 인사하고, 사진도 찍어요. "
                        "설치 없이 폰 브라우저에서 바로 할 수 있어요.",
         "tags": ["강아지게임", "산책", "반려견", "한강", "모바일게임"],
-        "seed": seed, "cast": cfg["n"], "time": cfg["time"], "scenes": [s for s, _, _ in cfg["scenes"]],
     }
+    # 🎙 내레이션: 찍힌 장면 순서대로 대본 → 낭독. 안 되면 내레이션 없이 (자막 + 음악)
+    narr, spoken = None, None
+    if voice:
+        try:
+            names = [p.stem.split("_", 1)[1] for p, _ in clips]
+            script = write_play_script(cfg, names, [_dur(p) for p, _ in clips])
+            print("  대본:\n" + "\n".join(f"   - {x}" for x in script["sentences"]))
+            wav, spans, spoken = narration(script["sentences"], work, TONE)
+            narr = (wav, spans)
+            meta.update({k: script[k] for k in ("title", "sentences", "description", "tags") if script.get(k)})
+        except Exception as e:
+            print(f"  ⚠ 내레이션 실패 → 자막 + 음악만: {str(e)[:200]}")
+    secs = edit(clips, cfg, out, narr)
+    print(f"  ✅ {out.name} ({secs:.1f}초{' · 내레이션 ' + spoken if spoken else ''})")
+    return {**meta, "seed": seed, "cast": cfg["n"], "time": cfg["time"], "scenes": [s for s, _, _ in cfg["scenes"]],
+            "voice": spoken}
 
 
 if __name__ == "__main__":
@@ -307,6 +415,8 @@ if __name__ == "__main__":
     ap.add_argument("--base", default=APP)
     ap.add_argument("--headed", action="store_true")
     ap.add_argument("--scenes", help="쉼표로 (시험용)")
+    ap.add_argument("--no-voice", action="store_true", help="내레이션 없이")
+    ap.add_argument("--reuse", action="store_true", help="촬영 건너뛰고 cache/play_<seed> 장면으로 편집만 (시험용)")
     a = ap.parse_args()
     Path(a.out).parent.mkdir(exist_ok=True)
-    print(json.dumps(make_play(Path(a.out), a.seed, a.base, a.headed, a.scenes.split(",") if a.scenes else None), ensure_ascii=False, indent=1))
+    print(json.dumps(make_play(Path(a.out), a.seed, a.base, a.headed, a.scenes.split(",") if a.scenes else None, not a.no_voice, a.reuse), ensure_ascii=False, indent=1))
