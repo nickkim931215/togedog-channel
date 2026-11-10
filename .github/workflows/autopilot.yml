@@ -103,15 +103,18 @@ jobs:
           path: |
             ~/.cache/ms-playwright
             ~/.local/share/fonts/NotoColorEmoji.ttf
-          key: playwright-1.65.0-emoji-v1
+          key: playwright-1.65.0-emoji-v2
 
       - name: Install browser
         if: steps.plan.outputs.count != '0'
         timeout-minutes: 8
         run: |
           python -m playwright install chromium
+          # 게임 화면 이모지(🛒 📦 🐾) — apt 가 가끔 멈춰서 3분 제한, 실패해도 촬영은 계속 (이모지만 네모)
           f=~/.local/share/fonts/NotoColorEmoji.ttf
-          [ -s "$f" ] || curl -fsSL --retry 3 -o "$f" https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf
+          if [ ! -s "$f" ]; then
+            timeout 180 sudo apt-get install -y -q --no-install-recommends fonts-noto-color-emoji               && cp /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf "$f" || echo "⚠ 이모지 글꼴 설치 실패 (계속)"
+          fi
           fc-cache ~/.local/share/fonts || true
 
       - name: Cache Whisper model
