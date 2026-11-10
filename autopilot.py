@@ -57,7 +57,7 @@ BASE_TAGS = ["Shorts", "투게독", "강아지"]
 # 유튜브 예약 공개 시각 (KST) — 사장님 11/09 결정 06:30 / 18:00 / 21:00
 PUBLISH_TIMES = {"morning": (6, 30), "evening": (18, 0), "night": (21, 0)}
 # 18시 칸은 이틀에 한 번 투게독 플레이 영상 (사장님 11/09 결정). 플레이 영상 제작이 준비되기 전엔 강아지 영상으로 채움
-PLAY_READY = False
+PLAY_READY = True
 HORIZON = timedelta(hours=26)    # 이 시간 안에 공개될 회차만 미리 만듦
 LEAD = timedelta(minutes=25)     # 1편 제작·업로드 여유
 SCENE_RULE = ("\n배경 영상 검색어(scenes)는 모두 강아지 장면으로: 첫 단어는 반드시 dog "
