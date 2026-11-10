@@ -107,7 +107,7 @@ def run_once(slot: str, topic: str | None, upload: bool, privacy: str, category:
 
     history = load_history()
     if publish_at and is_play_slot(slot, publish_at) and PLAY_READY:
-        raise NotImplementedError("플레이 영상 제작은 아직 준비 중")
+        return run_play(slot, upload, privacy, publish_at, history)
     category = category or pick_category(slot, history)
     cat_desc, guide, tone, cat_tags = CATEGORIES[category]
     if not topic:
@@ -129,6 +129,22 @@ def run_once(slot: str, topic: str | None, upload: bool, privacy: str, category:
     if publish_at:
         record["publish_at"] = publish_at.isoformat()
     return finish(record, s, out, upload, privacy, publish_at, history, cat_tags)
+
+
+def run_play(slot: str, upload: bool, privacy: str, publish_at: datetime | None, history: list[dict]) -> dict:
+    """🎮 투게독 플레이 영상 (play_maker: 게임 촬영 모드를 로봇이 찍음 — 매번 사람 수 · 장면 · 낮/저녁이 다름)."""
+    from play_maker import make_play
+    now = datetime.now(KST)
+    out = BASE / "output" / f"{now:%Y%m%d_%H%M}_{slot}_play.mp4"
+    out.parent.mkdir(exist_ok=True)
+    s = make_play(out)
+    print(f"▶ [{slot}/play] 제목: {s['title']}")
+    record = {"date": now.isoformat(timespec="minutes"), "slot": slot, "category": "play", "topic": "투게독 플레이",
+              "title": s["title"], "file": out.name, "video_id": None,
+              "play": {k: s[k] for k in ("seed", "cast", "time", "scenes")}}
+    if publish_at:
+        record["publish_at"] = publish_at.isoformat()
+    return finish(record, s, out, upload, privacy, publish_at, history, ["투게독플레이", "강아지게임"])
 
 
 def finish(record: dict, s: dict, out, upload: bool, privacy: str, publish_at, history: list[dict],

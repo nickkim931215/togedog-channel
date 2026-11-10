@@ -34,6 +34,11 @@ on:
         required: false
         default: false
         type: boolean
+      play_test:
+        description: "🎮 플레이 영상만 시험 제작 (업로드 안 함, 결과는 아티팩트)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -47,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      QUEUE: ${{ github.event_name == 'schedule' || (inputs.now != true && inputs.dry_run != true && inputs.category == '' && inputs.topic == '') }}
+      QUEUE: ${{ github.event_name == 'schedule' || (inputs.now != true && inputs.dry_run != true && inputs.play_test != true && inputs.category == '' && inputs.topic == '') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -90,6 +95,25 @@ jobs:
         if: steps.plan.outputs.count != '0'
         run: pip install -q -r requirements.txt
 
+      # 🎮 플레이 영상(play_maker): 게임 화면을 찍을 크롬 + 이모지 글꼴 (한글은 위에서 넣은 Pretendard)
+      - name: Cache browser
+        if: steps.plan.outputs.count != '0'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.local/share/fonts/NotoColorEmoji.ttf
+          key: playwright-1.65.0-emoji-v1
+
+      - name: Install browser
+        if: steps.plan.outputs.count != '0'
+        timeout-minutes: 8
+        run: |
+          python -m playwright install chromium
+          f=~/.local/share/fonts/NotoColorEmoji.ttf
+          [ -s "$f" ] || curl -fsSL --retry 3 -o "$f" https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf
+          fc-cache ~/.local/share/fonts || true
+
       - name: Cache Whisper model
         if: steps.plan.outputs.count != '0'
         uses: actions/cache@v4
@@ -117,8 +141,10 @@ jobs:
           CATEGORY: ${{ inputs.category }}
           PRIVACY: ${{ inputs.privacy || 'public' }}
           DRY_RUN: ${{ inputs.dry_run }}
+          PLAY_TEST: ${{ inputs.play_test }}
         run: |
           if [ "$QUEUE" = "true" ]; then python autopilot.py --schedule; exit; fi
+          if [ "$PLAY_TEST" = "true" ]; then python play_maker.py --out output/play_test.mp4; exit; fi
           ARGS=(--privacy "$PRIVACY")
           if [ -n "$TOPIC" ]; then ARGS+=(--topic "$TOPIC"); fi
           if [ -n "$CATEGORY" ]; then ARGS+=(--category "$CATEGORY"); fi
@@ -151,11 +177,13 @@ jobs:
           fi
 
       - name: Keep video as artifact
-        if: always() && (inputs.dry_run == true || failure())
+        if: always() && (inputs.dry_run == true || inputs.play_test == true || failure())
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: shorts-${{ github.run_id }}
-          path: output/*.mp4
+          path: |
+            output/*.mp4
+            cache/play_*/*.png
           retention-days: 2
           if-no-files-found: ignore
