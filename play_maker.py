@@ -139,7 +139,7 @@ SCENES = {
     "talk": (["-2,6", "2,4"], ["지나가는 이웃에게 인사!", "동네 친구들과 인사해요", "안녕하세요~ 👋"], s_talk),
     "photo": (["-92,-35"], ["우리 아이 사진도 찰칵 📸", "한강 배경으로 인생샷"], s_photo),
     "futsal": (["futsal"], ["풋살장에서 한 판 ⚽", "강아지들은 펜스 밖에서 응원 중"], s_futsal),
-    "dogpark": (["-17,51.6"], ["벤치에 앉으면 강아지들끼리 놀아요", "반려견 놀이터 🐶"], s_dogpark),
+    # dogpark(반려견 놀이터)는 뺌: 강아지들이 화면 밖으로 뛰어나감 (11/10 시험 · 전단 촬영)
     "river": (["-40,-46", "-60,-40"], ["한강 따라 걷기", "강바람 맞으며 산책"], s_river),
     # auto(자동 산책)는 뺌: 가상 시계로 찍으면 지도가 못 따라와 하늘색 빈 화면 (11/10 시험)
 }
@@ -314,10 +314,18 @@ def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path, voice: tupl
         args += ["-i", str(path.resolve())]
         lens.append(_dur(path))
     total = sum(lens) - fade * (len(clips) - 1)
-    # 내레이션이 영상보다 길면 마무리 화면을 늘림 (마지막 장 멈춤)
-    extra = 0.0
+    # 문장마다 그 장면이 시작할 때 말하게 (한 번에 낭독한 소리를 문장별로 잘라 옮김 · 앞 문장과 안 겹치게)
+    #  place = [(낭독 속 시작, 끝, 영상 속 시작, 문장)]
+    extra, place = 0.0, []
     if voice:
-        extra = max(0.0, max(e for _, e, _ in voice[1]) + 0.8 - total)
+        starts = [sum(lens[:i]) - fade * i for i in range(len(clips))]
+        at = 0.0
+        for i, (s0, s1, line) in enumerate(voice[1]):
+            a0, a1 = max(0.0, s0 - 0.06), s1 + 0.12
+            at = max(starts[min(i, len(starts) - 1)] + 0.35, at)
+            place.append((a0, a1, at, line))
+            at += (a1 - a0) + 0.2
+        extra = max(0.0, at + 0.6 - total)
         total += extra
     args += ["-ss", str(cfg["bgm_from"]), "-i", str(BGM.resolve())]
     if voice:
@@ -345,16 +353,20 @@ def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path, voice: tupl
     if voice:
         # 말하는 동안 자막 (영상 전체 시간 기준, 두 줄까지)
         subs = []
-        for s0, s1, line in voice[1]:
+        for a0, a1, at, line in place:
             rows = wrap(plain(line))
             for k, row in enumerate(rows):
                 y = f"h*0.62+{(k - (len(rows) - 1) / 2) * 92:.0f}"
-                subs.append(text(row, 74, "white", "0x3b2a1a", y, f":enable='between(t,{s0:.2f},{s1 + 0.25:.2f})'"))
+                subs.append(text(row, 74, "white", "0x3b2a1a", y, f":enable='between(t,{at:.2f},{at + a1 - a0 + 0.3:.2f})'"))
         f.append(f"[{prev}]{','.join(subs)}[vout]")
         prev = "vout"
+        n, vi = len(place), len(clips) + 1
+        f.append(f"[{vi}:a]aresample=44100,asplit={n}" + "".join(f"[s{k}]" for k in range(n)))
+        for k, (a0, a1, at, _) in enumerate(place):
+            ms = int(at * 1000)
+            f.append(f"[s{k}]atrim=start={a0:.3f}:end={a1:.3f},asetpts=PTS-STARTPTS,adelay={ms}|{ms}[p{k}]")
         f += [f"[{len(clips)}:a]atrim=duration={total:.3f},volume=0.22,afade=t=in:d=0.5,afade=t=out:st={total - 1.5:.3f}:d=1.5[m]",
-              f"[{len(clips) + 1}:a]aresample=44100,apad,atrim=duration={total:.3f}[n]",
-              "[m][n]amix=inputs=2:duration=first:normalize=0[a]"]
+              "[m]" + "".join(f"[p{k}]" for k in range(n)) + f"amix=inputs={n + 1}:duration=first:normalize=0[a]"]
     else:
         f.append(f"[{len(clips)}:a]atrim=duration={total:.3f},afade=t=in:d=0.5,afade=t=out:st={total - 1.5:.3f}:d=1.5,volume=0.8[a]")
     args += ["-filter_complex", ";".join(f), "-map", f"[{prev}]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium",
