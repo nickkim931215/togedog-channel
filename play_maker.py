@@ -23,6 +23,8 @@ from shorts_maker import FFMPEG
 APP = os.environ.get("TOGEDOG_BASE", "https://togedog.app")
 VCLOCK = (BASE / "vclock.js").read_text(encoding="utf-8")
 BGM = BASE / "bgm" / "game.mp3"
+QR = BASE / "assets" / "qr.png"  # togedog.app QR (사장님이 준 집 모양, 여백 잘라 냄)
+QR_W, QR_H, QR_Y = 420, 484, 520  # 마무리 화면 QR 크기 · 위치 (원본 222x256 비율)
 FONT = BASE / "fonts" / "Pretendard-ExtraBold.otf"
 FPS = 30
 W, H = 540, 960  # × 2 = 1080x1920
@@ -326,10 +328,13 @@ def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path, voice: tupl
             place.append((a0, a1, at, line))
             at += (a1 - a0) + 0.2
         extra = max(0.0, at + 0.6 - total)
-        total += extra
+    extra = max(extra, 1.5)  # QR 찍을 시간 (마무리 화면 1.5초 더)
+    total += extra
     args += ["-ss", str(cfg["bgm_from"]), "-i", str(BGM.resolve())]
     if voice:
         args += ["-i", str(voice[0].resolve())]
+    qi = len(clips) + (2 if voice else 1)  # 마무리 화면 QR (사장님 QR · 11/10 "프로필에 링크 있어요"와 함께)
+    args += ["-i", str(QR.resolve())]
     last = len(clips) - 1
     for i, (_, cap) in enumerate(clips):
         chain = ["setpts=PTS-STARTPTS", "scale=1080:1920", f"fps={FPS}", "format=yuv420p"]
@@ -341,10 +346,17 @@ def edit(clips: list[tuple[Path, str | None]], cfg: dict, out: Path, voice: tupl
             if cap:
                 chain.append(text(cap, 72, "white", "0x3b2a1a", "h*0.60", ":alpha='if(lt(t,0.25),t/0.25,1)'"))
         if i == last:
-            chain += ["drawbox=x=0:y=0:w=iw:h=ih:color=black@0.35:t=fill:enable='gte(t,0.6)'",
-                      text("투게독", 170, "white", "0xf97316", "h*0.30", ":enable='gte(t,0.6)'"),
-                      text("우리 아이와 함께 걷는 동네", 64, "white", "0x3b2a1a", "h*0.30+220", ":enable='gte(t,0.9)'"),
-                      text("togedog.app", 84, "0xfde68a", "0x3b2a1a", "h*0.30+330", ":enable='gte(t,1.2)'")]
+            # 마무리: 어둡게 → 투게독 · 한 줄 · 주소 → QR 카드 + "프로필에 링크 있어요!" (아래 h*0.62 는 내레이션 자막 자리)
+            chain += ["drawbox=x=0:y=0:w=iw:h=ih:color=black@0.45:t=fill:enable='gte(t,0.6)'",
+                      text("투게독", 150, "white", "0xf97316", "h*0.07", ":enable='gte(t,0.6)'"),
+                      text("우리 아이와 함께 걷는 동네", 58, "white", "0x3b2a1a", "h*0.07+185", ":enable='gte(t,0.8)'"),
+                      text("togedog.app", 76, "0xfde68a", "0x3b2a1a", "h*0.07+270", ":enable='gte(t,1.0)'"),
+                      f"drawbox=x=(iw-{QR_W + 48})/2:y={QR_Y - 24}:w={QR_W + 48}:h={QR_H + 48}:color=white:t=fill:enable='gte(t,1.2)'",
+                      text("프로필에 링크 있어요!", 66, "white", "0xf97316", f"{QR_Y + QR_H + 52}", ":enable='gte(t,1.4)'")]
+            f.append(f"[{i}:v]{','.join(chain)}[v{i}a]")
+            f.append(f"[{qi}:v]scale={QR_W}:{QR_H}:flags=neighbor,format=yuva420p[qr]")
+            f.append(f"[v{i}a][qr]overlay=x=(W-w)/2:y={QR_Y}:enable='gte(t,1.2)'[v{i}]")
+            continue
         f.append(f"[{i}:v]{','.join(chain)}[v{i}]")
     prev, t = "v0", lens[0]
     for i in range(1, len(clips)):
