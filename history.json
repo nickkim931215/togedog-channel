@@ -77,5 +77,25 @@
   "file": "20261111_0625_morning_다른_강아지_만났을_때_직진하면_안_되는_이유.mp4",
   "video_id": "yJg3ods5eMY",
   "publish_at": "2026-11-12T06:30:00+09:00"
+ },
+ {
+  "date": "2026-11-11T17:21+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "콩이랑 떠나는 한강 동네 산책 🐾",
+  "file": "20261111_1721_evening_play.mp4",
+  "video_id": "kHqrpZBu7mg",
+  "play": {
+   "seed": 385268,
+   "cast": 26,
+   "time": "day",
+   "scenes": [
+    "futsal",
+    "walk",
+    "talk"
+   ]
+  },
+  "publish_at": "2026-11-12T18:00:00+09:00"
  }
 ]
