@@ -147,5 +147,26 @@
   "file": "20261113_0655_morning_강아지_밥_산책_전후_언제_줘야_할까.mp4",
   "video_id": "iR4xRiHntJU",
   "publish_at": "2026-11-14T06:30:00+09:00"
+ },
+ {
+  "date": "2026-11-13T17:44+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "두부랑 저녁 한강 산책 다녀왔어요 🐾",
+  "file": "20261113_1744_evening_play.mp4",
+  "video_id": "LcMZZsZmJWA",
+  "play": {
+   "seed": 559440,
+   "cast": 48,
+   "time": "night",
+   "scenes": [
+    "walk",
+    "futsal",
+    "photo",
+    "talk"
+   ]
+  },
+  "publish_at": "2026-11-14T18:00:00+09:00"
  }
 ]
