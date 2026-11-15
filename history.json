@@ -218,5 +218,25 @@
   "file": "20261115_0504_morning_현관에서_흥분하는_강아지_1분_진정법.mp4",
   "video_id": "SLlv86AJ0F8",
   "publish_at": "2026-11-16T06:30:00+09:00"
+ },
+ {
+  "date": "2026-11-15T17:24+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "강아지 토리와 떠나는 힐링 산책 🐾",
+  "file": "20261115_1724_evening_play.mp4",
+  "video_id": "-7moXbbv7vo",
+  "play": {
+   "seed": 731095,
+   "cast": 14,
+   "time": "day",
+   "scenes": [
+    "talk",
+    "river",
+    "walk"
+   ]
+  },
+  "publish_at": "2026-11-16T18:00:00+09:00"
  }
 ]
