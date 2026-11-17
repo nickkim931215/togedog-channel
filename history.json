@@ -288,5 +288,25 @@
   "file": "20261117_0617_morning_포메라니안이_원래_썰매견이었다고.mp4",
   "video_id": "aE3gcpRKjdE",
   "publish_at": "2026-11-18T06:30:00+09:00"
+ },
+ {
+  "date": "2026-11-17T18:43+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "날씨 좋은 날 콩이랑 한강 산책하기 🐾",
+  "file": "20261117_1843_evening_play.mp4",
+  "video_id": "LKgjQT5sWVg",
+  "play": {
+   "seed": 908626,
+   "cast": 13,
+   "time": "day",
+   "scenes": [
+    "walk",
+    "river",
+    "futsal"
+   ]
+  },
+  "publish_at": "2026-11-18T18:00:00+09:00"
  }
 ]
