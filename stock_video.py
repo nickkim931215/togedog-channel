@@ -7,6 +7,7 @@
 import json
 import os
 import random
+from pathlib import Path
 
 import requests
 
@@ -89,6 +90,18 @@ def _tag_words(tags: str) -> set[str]:
     return {_norm(w) for t in tags.split(",") for w in t.split()}
 
 
+def _best_file(h):
+    """세로 영상 우선, 그다음 해상도 높은 것 (가로 영상은 가운데를 세로로 잘라 씀)."""
+    vids = [v for v in h["videos"].values() if v.get("url")]
+    if not vids:
+        return None
+    portrait = [v for v in vids if v["height"] > v["width"]]
+    pool = portrait or vids
+    # 1080p 이상 중 가장 작은 것 (4K는 다운로드가 커서 1080p 우선)
+    ok = [v for v in pool if min(v["width"], v["height"]) >= 1080]
+    return min(ok, key=lambda v: v["width"]) if ok else max(pool, key=lambda v: v["width"])
+
+
 def _pixabay_cands(query, used, min_sec, key, strict=True) -> list[tuple]:
     """관련도 순으로 정렬한 후보 [(점수, 세로?, 충분히 김?, hit, 파일)]. 최근 영상에 쓴 클립은 제외."""
     r = requests.get("https://pixabay.com/api/videos/", timeout=20,
@@ -99,22 +112,11 @@ def _pixabay_cands(query, used, min_sec, key, strict=True) -> list[tuple]:
     hits = [h for h in r.json().get("hits", [])
             if ("pixabay", h["id"]) not in used and f"pixabay:{h['id']}" not in recent]
 
-    def best(h):
-        """세로 영상 우선, 그다음 해상도 높은 것 (가로 영상은 가운데를 세로로 잘라 씀)."""
-        vids = [v for v in h["videos"].values() if v.get("url")]
-        if not vids:
-            return None
-        portrait = [v for v in vids if v["height"] > v["width"]]
-        pool = portrait or vids
-        # 1080p 이상 중 가장 작은 것 (4K는 다운로드가 커서 1080p 우선)
-        ok = [v for v in pool if min(v["width"], v["height"]) >= 1080]
-        return min(ok, key=lambda v: v["width"]) if ok else max(pool, key=lambda v: v["width"])
-
     qwords = [_norm(w) for w in query.split() if len(w) > 2]
     subject = next((w for w in qwords if w not in ADJECTIVES), "")
     scored = []
     for h in hits:
-        v = best(h)
+        v = _best_file(h)
         tags = _tag_words(h.get("tags", ""))
         if not v or tags & SKIP_TAGS or (strict and subject and subject not in tags):
             continue
@@ -127,8 +129,9 @@ def _pixabay_cands(query, used, min_sec, key, strict=True) -> list[tuple]:
 
 
 def _thumb(h) -> bytes | None:
-    for size in ("small", "medium", "tiny", "large"):
-        url = h["videos"].get(size, {}).get("thumbnail")
+    urls = ([h["videos"].get(size, {}).get("thumbnail") for size in ("small", "medium", "tiny", "large")]
+            if "videos" in h else [h.get("webformatURL"), h.get("previewURL")])
+    for url in urls:
         if not url:
             continue
         try:
@@ -223,10 +226,130 @@ def _pixabay_pick(tries: list[tuple[str, bool]], used, min_sec, key, context: st
     return _take(first, used) if first else None
 
 
-def fetch_clip(query: str, used: set, min_sec: float = 0, context: str = "") -> str | None:
+# ---------- 견종 ----------
+# 견종 이야기 장면엔 반드시 그 견종이 나와야 함. Pixabay엔 인기 소형견 영상이 거의 없어서(비숑·시츄 0개)
+# 영상이 없으면 그 견종 사진(수십~수백 장)에 천천히 확대되는 움직임을 줘서 씀.
+# 한국어 이름 → (Pixabay 검색어, 태그에 있어야 할 단어 묶음 — 묶음 하나의 단어가 다 있으면 그 견종)
+BREEDS = {
+    "골든리트리버": ("golden retriever", [{"golden", "retriever"}]),
+    "래브라도리트리버": ("labrador retriever", [{"labrador"}]), "래브라도": ("labrador retriever", [{"labrador"}]),
+    "리트리버": ("retriever dog", [{"retriever"}]),
+    "토이푸들": ("poodle", [{"poodle"}]), "푸들": ("poodle", [{"poodle"}]),
+    "말티즈": ("maltese dog", [{"maltese"}]), "말티푸": ("maltipoo", [{"maltipoo"}]),
+    "비숑프리제": ("bichon frise", [{"bichon"}]), "비숑": ("bichon frise", [{"bichon"}]),
+    "포메라니안": ("pomeranian", [{"pomeranian"}]), "포메": ("pomeranian", [{"pomeranian"}]),
+    "시츄": ("shih tzu", [{"shih", "tzu"}, {"shihtzu"}, {"shih-tzu"}]),
+    "치와와": ("chihuahua", [{"chihuahua"}]),
+    "웰시코기": ("welsh corgi", [{"corgi"}]), "코기": ("welsh corgi", [{"corgi"}]),
+    "시바이누": ("shiba inu", [{"shiba"}]), "시바견": ("shiba inu", [{"shiba"}]), "시바": ("shiba inu", [{"shiba"}]),
+    "진돗개": ("jindo dog", [{"jindo"}]),
+    "프렌치불독": ("french bulldog", [{"french", "bulldog"}]), "불독": ("bulldog", [{"bulldog"}]),
+    "비글": ("beagle", [{"beagle"}]), "닥스훈트": ("dachshund", [{"dachshund"}]),
+    "요크셔테리어": ("yorkshire terrier", [{"yorkshire"}, {"yorkie"}]),
+    "요크셔": ("yorkshire terrier", [{"yorkshire"}, {"yorkie"}]),
+    "시베리안허스키": ("husky dog", [{"husky"}]), "허스키": ("husky dog", [{"husky"}]),
+    "보더콜리": ("border collie", [{"border", "collie"}]), "사모예드": ("samoyed", [{"samoyed"}]),
+    "슈나우저": ("schnauzer", [{"schnauzer"}]), "퍼그": ("pug dog", [{"pug"}]),
+    "저먼셰퍼드": ("german shepherd", [{"shepherd"}]), "셰퍼드": ("german shepherd", [{"shepherd"}]),
+    "도베르만": ("doberman", [{"doberman"}]), "코카스파니엘": ("cocker spaniel", [{"cocker"}]),
+    "잭러셀테리어": ("jack russell terrier", [{"jack", "russell"}, {"russell"}]),
+    "잭러셀": ("jack russell terrier", [{"russell"}]),
+    "달마시안": ("dalmatian", [{"dalmatian"}]), "보스턴테리어": ("boston terrier", [{"boston"}]),
+    "스피츠": ("spitz dog", [{"spitz"}]), "파피용": ("papillon dog", [{"papillon"}]),
+    "베들링턴테리어": ("bedlington terrier", [{"bedlington"}]), "베들링턴": ("bedlington terrier", [{"bedlington"}]),
+    "그레이하운드": ("greyhound", [{"greyhound"}]), "말라뮤트": ("alaskan malamute", [{"malamute"}]),
+}
+
+
+def detect_breed(text: str) -> str:
+    """글에 나온 견종(한국어 이름) — 긴 이름부터 찾음 ('토이푸들'이 '푸들'보다 먼저). 없으면 ''."""
+    flat = (text or "").replace(" ", "")
+    return next((k for k in sorted(BREEDS, key=len, reverse=True) if k in flat), "")
+
+
+def _breed_hits(kind: str, breed: str, used, key, allow_recent: bool) -> list[dict]:
+    q, groups = BREEDS[breed]
+    url = "https://pixabay.com/api/videos/" if kind == "video" else "https://pixabay.com/api/"
+    params = {"key": key, "q": q, "per_page": 100, "safesearch": "true", "order": "popular"}
+    params.update({"video_type": "film"} if kind == "video" else {"image_type": "photo"})
+    r = requests.get(url, params=params, timeout=20)
+    r.raise_for_status()
+    tag = "pixabay" if kind == "video" else "pixabay-img"
+    recent = set() if allow_recent else _recent_ids()
+    out = []
+    for h in r.json().get("hits", []):
+        tags = _tag_words(h.get("tags", ""))
+        if (tag, h["id"]) in used or f"{tag}:{h['id']}" in recent or tags & SKIP_TAGS:
+            continue
+        if any(g <= tags for g in groups):
+            out.append(h)
+    return out
+
+
+def _photo_clip(img: Path, sec: float) -> str:
+    """사진 → 1080x1920 영상 (흐린 배경 위에 사진 전체, 천천히 확대)."""
+    import subprocess
+
+    from shorts_maker import FFMPEG
+    n = max(int((sec + 1) * 30), 60)
+    out = img.with_name(f"{img.stem}_{n}.mp4")
+    if not out.exists():
+        vf = ("split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
+              "boxblur=24:2,eq=brightness=-0.08[bg];[b]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
+              "[bg][fg]overlay=(W-w)/2:(H-h)/2,scale=2160:3840,"
+              f"zoompan=z='1+0.08*on/{n}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30,"
+              "format=yuv420p")
+        subprocess.run([FFMPEG, "-y", "-loop", "1", "-framerate", "30", "-i", str(img), "-frames:v", str(n),
+                        "-vf", vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", str(out)],
+                       check=True, capture_output=True)
+    return str(out)
+
+
+def _breed_clip(breed: str, used, min_sec, key, context: str) -> str | None:
+    """그 견종 영상 → 없으면 그 견종 사진. 최근 영상에 쓴 것밖에 없으면 다시 씀 (다른 견종보다는 나음)."""
+    q = BREEDS[breed][0]
+    ctx = f"{context}\n⚠️ 이 장면엔 반드시 {breed}({q})가 보여야 함. 다른 견종이면 0."
+    judging = bool(context and os.environ.get("GEMINI_API_KEY"))
+    rejected = set()  # 이미 안 맞는다고 본 후보는 다시 판단 안 함
+    for kind in ("video", "photo"):
+        for allow_recent in (False, True):
+            hits = [h for h in _breed_hits(kind, breed, used, key, allow_recent) if (kind, h["id"]) not in rejected]
+            if kind == "video":
+                hits = [h for h in hits if _best_file(h)]
+            if not hits:
+                continue
+            random.shuffle(hits)
+            pool = [(0, 0, 0, h, _best_file(h) if kind == "video" else None) for h in hits[:JUDGE_MAX]]
+            idx, _ = _judge(pool, q, ctx) if judging else (None, "")
+            if idx == -1:
+                rejected.update((kind, c[3]["id"]) for c in pool)
+                print(f"    ✘ {breed} {'영상' if kind == 'video' else '사진'} {len(pool)}개 모두 장면과 안 맞음")
+                continue
+            pick = pool[idx if idx is not None else 0]
+            if kind == "video":
+                print(f"    🐶 {breed} 영상 사용")
+                return _take(pick, used)
+            h = pick[3]
+            used.add(("pixabay-img", h["id"]))
+            PICKED.append(f"pixabay-img:{h['id']}")
+            img = Path(_download(h.get("largeImageURL") or h["webformatURL"], CACHE / "pixabay_img" / f"{h['id']}.jpg"))
+            print(f"    🐶 {breed} 영상이 없어 {breed} 사진으로")
+            return _photo_clip(img, min_sec)
+    return None
+
+
+def fetch_clip(query: str, used: set, min_sec: float = 0, context: str = "", breed: str = "") -> str | None:
     """검색어에 맞는 영상 1개를 받아 로컬 경로 반환 (없으면 None → 그라데이션 배경).
-    context = 영상 제목 + 이 장면의 문장 — 있으면 Gemini가 내용에 맞는 영상을 고름."""
+    context = 영상 제목 + 이 장면의 문장 — 있으면 Gemini가 내용에 맞는 영상을 고름.
+    breed = 이 장면의 견종(한국어, detect_breed) — 있으면 그 견종 영상·사진만."""
     load_env()
+    if breed in BREEDS and os.environ.get("PIXABAY_API_KEY"):
+        try:
+            path = _breed_clip(breed, used, min_sec, os.environ["PIXABAY_API_KEY"], context)
+            if path:
+                return path
+        except Exception as e:  # 견종 찾기가 실패해도 영상 제작은 계속 (일반 검색으로)
+            print(f"    ({breed} 찾기 실패, 일반 검색으로: {str(e)[:100]})")
     words = query.split()
     # 주인공 단어가 태그에 있는 영상만 → 검색어 줄여서(주인공+1단어, 주인공만) → 그래도 없으면 제한 없이
     words = [w for w in words if w.lower() not in ADJECTIVES] or words
