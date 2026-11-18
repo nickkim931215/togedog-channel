@@ -75,6 +75,7 @@ SYNONYMS = {"puppy": "dog", "puppies": "dog", "doggy": "dog", "kitten": "cat", "
 SKIP_TAGS = {"cartoon", "animation", "illustration", "render", "3d"}
 ADJECTIVES = {"cute", "happy", "little", "small", "big", "beautiful", "young", "old", "calm", "cozy", "bright", "golden"}
 JUDGE_MAX = 8  # Gemini에게 한 번에 보여 줄 후보 수
+JUDGE_ROUNDS = 4  # 장면 하나에 판단 최대 횟수 (시간·무료 한도 보호)
 JUDGE_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"]
 
 
@@ -190,8 +191,8 @@ def _take(cand, used) -> str:
 def _pixabay_pick(tries: list[tuple[str, bool]], used, min_sec, key, context: str) -> str | None:
     """검색어를 차례로 넓혀 가며 후보를 모으고, 문장에 맞는 영상을 골라 다운로드."""
     judging = bool(context and os.environ.get("GEMINI_API_KEY"))
-    queue, tried, first, alts = list(tries), set(), None, 0
-    while queue:
+    queue, tried, first, alts, judged = list(tries), set(), None, 0, 0
+    while queue and judged < JUDGE_ROUNDS:
         q, strict = queue.pop(0)
         if (q, strict) in tried:
             continue
@@ -207,6 +208,7 @@ def _pixabay_pick(tries: list[tuple[str, bool]], used, min_sec, key, context: st
         random.shuffle(pool)
         pool = pool[:JUDGE_MAX]
         idx, alt = _judge(pool, q, context)
+        judged += 1
         if idx is None:
             return _take(pool[0], used)
         if idx >= 0:

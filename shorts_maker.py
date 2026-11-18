@@ -7,6 +7,7 @@
 """
 import asyncio
 import os
+import json
 import random
 import re
 import shutil
@@ -277,11 +278,29 @@ def join_with_xfade(clips: list[Path], durs: list[float], out: Path):
          "-c:v", "libx264", "-preset", "fast", "-crf", "15", "-pix_fmt", "yuv420p", str(out)])
 
 
-def pick_bgm() -> Path | None:
+AUDIO_EXT = (".mp3", ".m4a", ".wav", ".ogg", ".aac")
+BGM_MOODS = {"breed": "warm", "behavior": "warm", "walk_tips": "bright", "cute": "bright"}  # 카테고리 → bgm/<분위기>/ 폴더
+LAST_BGM = ""  # 이번 영상에 쓴 곡 → autopilot이 history에 기록 (같은 곡 연달아 안 나오게)
+
+
+def pick_bgm(mood: str = "") -> Path | None:
+    """bgm/<분위기>/ 폴더에서 최근 3편에 안 쓴 곡. 분위기 폴더가 비어 있으면 bgm/ 바로 아래 곡(예전 방식)."""
+    global LAST_BGM
     if not BGM_DIR.exists():
         return None
-    files = [p for p in BGM_DIR.iterdir() if p.suffix.lower() in (".mp3", ".m4a", ".wav", ".ogg", ".aac")]
-    return random.choice(files) if files else None
+    sub = BGM_DIR / mood if mood else None
+    files = sorted(p for p in sub.iterdir() if p.suffix.lower() in AUDIO_EXT) if sub and sub.is_dir() else []
+    if not files:
+        files = [p for p in BGM_DIR.iterdir() if p.suffix.lower() in AUDIO_EXT]
+    if not files:
+        return None
+    try:
+        recent = {h.get("bgm") for h in json.loads((BASE / "history.json").read_text(encoding="utf-8"))[-3:]}
+    except (OSError, ValueError):
+        recent = set()
+    pick = random.choice([p for p in files if p.name not in recent] or files)
+    LAST_BGM = pick.name
+    return pick
 
 
 # ---------- 내레이션 ----------
@@ -366,7 +385,7 @@ def make_sfx(ticks: list[float], dings: list[float], total: float, out: Path):
 
 # ---------- 메인 ----------
 def make_shorts(script: str, out_path, title: str = "", voice: str = DEFAULT_VOICE,
-                scenes: list[str] | None = None, tone: str | None = None, label: str = "",
+                scenes: list[str] | None = None, tone: str | None = None, label: str = "", bgm_mood: str = "",
                 quiz: list[dict] | None = None) -> Path:
     """quiz: [{n, q, a, at}] — at번째 문장이 문제, 다음이 뜸·정답·풀이 (autopilot.quiz_script)."""
     sentences = split_sentences(script)
@@ -428,7 +447,7 @@ def make_shorts(script: str, out_path, title: str = "", voice: str = DEFAULT_VOI
         (tmp / "subs.ass").write_text(build_ass(title, timeline, total, label, quiz), encoding="utf-8")
         (tmp / "fonts").mkdir()
         shutil.copy(FONT_FILE, tmp / "fonts" / FONT_FILE.name)
-        bgm = pick_bgm()
+        bgm = pick_bgm(bgm_mood)
         cmd = [FFMPEG, "-y", "-i", "bg.mp4", "-i", "voice.wav"]
         vgraph = "[0:v]ass=subs.ass:fontsdir=fonts[v]"
         pre, mix = "", ["[1:a]"]

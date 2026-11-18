@@ -104,7 +104,7 @@ def pending_slots(now: datetime, history: list[dict]) -> list[tuple[str, datetim
 def run_once(slot: str, topic: str | None, upload: bool, privacy: str, category: str | None = None,
              publish_at: datetime | None = None) -> dict:
     from script_writer import pick_topic, write_script
-    from shorts_maker import make_shorts
+    from shorts_maker import BGM_MOODS, make_shorts
 
     history = load_history()
     if publish_at and is_play_slot(slot, publish_at) and PLAY_READY:
@@ -123,7 +123,7 @@ def run_once(slot: str, topic: str | None, upload: bool, privacy: str, category:
     out = BASE / "output" / f"{now:%Y%m%d_%H%M}_{slot}_{safe}.mp4"
     out.parent.mkdir(exist_ok=True)
     make_shorts("\n".join(sentences), out, title=title, scenes=s.get("scenes"), tone=tone,
-                label=f"TOGEDOG · {LABELS[category]}")
+                label=f"TOGEDOG · {LABELS[category]}", bgm_mood=BGM_MOODS.get(category, ""))
 
     record = {"date": now.isoformat(timespec="minutes"), "slot": slot, "category": category, "topic": topic,
               "title": title, "file": out.name, "video_id": None}
@@ -161,6 +161,9 @@ def finish(record: dict, s: dict, out, upload: bool, privacy: str, publish_at, h
                                           tags=list(dict.fromkeys(BASE_TAGS + cat_tags + tags)), privacy=privacy,
                                           publish_at=publish_at)
     record["clips"] = stock_video.take_picked()  # 다음 영상들이 같은 배경 클립을 안 쓰게
+    import shorts_maker
+    if shorts_maker.LAST_BGM:
+        record["bgm"], shorts_maker.LAST_BGM = shorts_maker.LAST_BGM, ""
     history.append(record)
     HISTORY.write_text(json.dumps(history, ensure_ascii=False, indent=1), encoding="utf-8")
     return record
