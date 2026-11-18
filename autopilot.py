@@ -15,6 +15,7 @@ import traceback
 from datetime import datetime, timedelta, timezone
 
 from settings import BASE
+import stock_video
 
 KST = timezone(timedelta(hours=9))
 CHANNEL = "투게독"
@@ -159,6 +160,7 @@ def finish(record: dict, s: dict, out, upload: bool, privacy: str, publish_at, h
         record["video_id"] = upload_video(out, f"{s['title']} #Shorts", CHANNEL, description=desc,
                                           tags=list(dict.fromkeys(BASE_TAGS + cat_tags + tags)), privacy=privacy,
                                           publish_at=publish_at)
+    record["clips"] = stock_video.take_picked()  # 다음 영상들이 같은 배경 클립을 안 쓰게
     history.append(record)
     HISTORY.write_text(json.dumps(history, ensure_ascii=False, indent=1), encoding="utf-8")
     return record

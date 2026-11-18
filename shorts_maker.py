@@ -249,11 +249,11 @@ def clip_luma(path: str) -> float:
     return sum(vals) / len(vals) if vals else 128.0
 
 
-def fetch_good_clip(query: str, used: set, min_sec: float, tries: int = 4) -> str | None:
+def fetch_good_clip(query: str, used: set, min_sec: float, tries: int = 4, context: str = "") -> str | None:
     """너무 어두운(거의 검은) 클립은 건너뛰고 다음 후보 사용."""
     fallback = None
     for _ in range(tries):
-        src = fetch_clip(query, used, min_sec=min_sec)
+        src = fetch_clip(query, used, min_sec=min_sec, context=context)
         if not src:
             break
         if clip_luma(src) >= 45:
@@ -411,7 +411,8 @@ def make_shorts(script: str, out_path, title: str = "", voice: str = DEFAULT_VOI
         report("footage", f"배경 영상 {len(groups)}장면 찾으러 갑니다!", "pixabay", stage="footage", progress=0)
         for gi, (q, idx) in enumerate(groups):
             length = gdurs[gi] + (XFADE if gi < len(groups) - 1 else 0)
-            src = fetch_good_clip(q, used, min_sec=length)
+            src = fetch_good_clip(q, used, min_sec=length,
+                                  context=f"영상 제목: {title}\n이 장면 문장: " + " ".join(sentences[i] for i in idx))
             print(f"  [{gi + 1}/{len(groups)}] {gdurs[gi]:.1f}s  {' / '.join(sentences[i] for i in idx)}   "
                   f"🎬 {q if src else '그라데이션'}")
             report("footage", f"[{gi + 1}/{len(groups)}] '{q}' " + ("장면 확보!" if src else "못 찾아서 그라데이션으로 대체"),
