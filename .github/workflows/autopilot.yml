@@ -65,7 +65,10 @@ jobs:
         id: plan
         run: |
           if [ "$QUEUE" = "true" ]; then
-            out=$(python autopilot.py --plan); echo "만들 회차: $out"
+            # 확인 단계가 고장 나도 제작은 무조건 진행 (11/18 이 단계 오류로 하루 가까이 업로드 멈춤).
+            # 실제로 빈 회차만 만드는 판단은 제작 단계(autopilot.py)가 다시 하므로 3으로 넘겨도 중복 업로드 없음
+            out=$(python autopilot.py --plan) || { echo "⚠ 회차 확인 실패 — 일단 제작 진행"; out=3; }
+            echo "만들 회차: $out"
             echo "count=${out%% *}" >> "$GITHUB_OUTPUT"
           else
             echo "count=1" >> "$GITHUB_OUTPUT"

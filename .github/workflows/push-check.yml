@@ -1,0 +1,44 @@
+name: push check
+
+# 코드를 고칠 때마다 바로 시험: 예약 실행이 거치는 순서(회차 확인 → 패키지 설치 → 제작 모듈)를 그대로 돌려 보고,
+# 깨지면 바로 디스코드 DM. (11/18 수정 하나로 '회차 확인' 단계가 죽어 업로드가 멈췄는데 다음 예약 실행에서야 알았음)
+on:
+  push:
+    branches: [main]
+    paths: ["**.py", "requirements.txt", ".github/workflows/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Syntax
+        run: python -m py_compile *.py
+
+      # 예약 실행에선 이 단계가 패키지 설치 전에 돌아감 — 여기서 패키지가 필요하면 안 됨
+      - name: Plan before install
+        run: python autopilot.py --plan
+
+      - name: Install packages
+        run: pip install -q -r requirements.txt
+
+      - name: Import modules
+        run: python -c "import autopilot, script_writer, shorts_maker, stock_video, youtube_uploader, voice_gemini, healthcheck, play_maker"
+
+      - name: Alert owner
+        if: failure()
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python alert.py "🚨 방금 고친 코드가 시험에서 실패했어요 — 그대로 두면 다음 자동 업로드가 멈출 수 있어요. $RUN_URL 👉 Claude에게 '투게독 불러와' 하고 알려주세요."
