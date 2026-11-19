@@ -430,5 +430,45 @@
   },
   "publish_at": "2026-11-20T18:00:00+09:00",
   "clips": []
+ },
+ {
+  "date": "2026-11-20T04:37+09:00",
+  "slot": "night",
+  "category": "behavior",
+  "topic": "쓰다듬어 줄 때 귀를 뒤로 착 접고 '물개'가 되는 강아지의 사랑스러운 속뜻",
+  "title": "쓰다듬으면 물개가 되는 강아지 속뜻",
+  "file": "20261120_0437_night_쓰다듬으면_물개가_되는_강아지_속뜻.mp4",
+  "video_id": "ZU4EPSezK4Y",
+  "publish_at": "2026-11-20T21:00:00+09:00",
+  "clips": [
+   "pixabay:65530",
+   "pixabay:139433",
+   "pixabay:135025",
+   "pixabay:127622",
+   "pixabay:243334",
+   "pixabay:14869",
+   "pixabay:154222"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-20T04:45+09:00",
+  "slot": "morning",
+  "category": "breed",
+  "topic": "세상 순해 보이는 몰티즈가 유독 '참지 않는 성격'이 된 놀라운 역사적 반전",
+  "title": "몰티즈가 참지 않는 놀라운 역사",
+  "file": "20261120_0445_morning_몰티즈가_참지_않는_놀라운_역사.mp4",
+  "video_id": "JTUO1ohuISI",
+  "publish_at": "2026-11-21T06:30:00+09:00",
+  "clips": [
+   "pixabay:156318",
+   "pixabay:26314",
+   "pixabay:217090",
+   "pixabay:8251",
+   "pixabay:237988",
+   "pixabay:98821",
+   "pixabay:60132"
+  ],
+  "bgm": "game.mp3"
  }
 ]
