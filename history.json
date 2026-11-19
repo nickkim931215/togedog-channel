@@ -389,5 +389,25 @@
    "pixabay:8752"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-19T13:45+09:00",
+  "slot": "noon",
+  "category": "breed",
+  "topic": "세상에서 가장 작은 치와와가 대형견 앞에서도 절대 기죽지 않는 놀라운 비밀",
+  "title": "치와와가 대형견 앞에서도 당당한 비밀",
+  "file": "20261119_1345_noon_치와와가_대형견_앞에서도_당당한_비밀.mp4",
+  "video_id": "zrGWbB_NKBg",
+  "publish_at": "2026-11-20T12:30:00+09:00",
+  "clips": [
+   "pixabay:37172",
+   "pixabay:185938",
+   "pixabay:246372",
+   "pixabay:229565",
+   "pixabay-img:815206",
+   "pixabay-img:10439167",
+   "pixabay-img:2945855"
+  ],
+  "bgm": "game.mp3"
  }
 ]
