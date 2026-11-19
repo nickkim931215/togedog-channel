@@ -52,6 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
+      # AI 일터(togedog.app/admin/office) 실시간 보고용 (없거나 실패해도 보고만 건너뜀)
+      OFFICE_GIST: ${{ secrets.OFFICE_GIST }}
+      OFFICE_TOKEN: ${{ secrets.OFFICE_TOKEN }}
       QUEUE: ${{ github.event_name == 'schedule' || (inputs.now != true && inputs.dry_run != true && inputs.play_test != true && inputs.category == '' && inputs.topic == '') }}
     steps:
       - uses: actions/checkout@v4
@@ -64,14 +67,17 @@ jobs:
       - name: Check queue
         id: plan
         run: |
+          python office.py start || true
           if [ "$QUEUE" = "true" ]; then
             # 확인 단계가 고장 나도 제작은 무조건 진행 (11/18 이 단계 오류로 하루 가까이 업로드 멈춤).
             # 실제로 빈 회차만 만드는 판단은 제작 단계(autopilot.py)가 다시 하므로 3으로 넘겨도 중복 업로드 없음
             out=$(python autopilot.py --plan) || { echo "⚠ 회차 확인 실패 — 일단 제작 진행"; out=3; }
             echo "만들 회차: $out"
             echo "count=${out%% *}" >> "$GITHUB_OUTPUT"
+            python office.py plan "$out" || true
           else
             echo "count=1" >> "$GITHUB_OUTPUT"
+            python office.py plan manual || true
           fi
 
       # apt 설치는 가끔 오래 멈춰서 GitHub 릴리스의 ffmpeg 빌드(libass 포함)를 받아 캐시
@@ -181,6 +187,13 @@ jobs:
             pip install -q $(grep -E "^(requests|httpx|google-)" requirements.txt) 2>/dev/null
             python healthcheck.py --after-failure
           fi
+
+      - name: Office finish
+        if: always()
+        continue-on-error: true
+        env:
+          YT_TOKEN: ${{ secrets.YT_TOKEN_TOGEDOG }}   # 채널 통계(구독자·조회수) 조회용
+        run: python office.py finish "${{ job.status }}" || true
 
       - name: Keep video as artifact
         if: always() && (inputs.dry_run == true || inputs.play_test == true || failure())

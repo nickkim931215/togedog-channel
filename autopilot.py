@@ -14,6 +14,7 @@ import re
 import traceback
 from datetime import datetime, timedelta, timezone
 
+from office import report
 from settings import BASE
 
 KST = timezone(timedelta(hours=9))
@@ -115,11 +116,19 @@ def run_once(slot: str, topic: str | None, upload: bool, privacy: str, category:
         return run_play(slot, upload, privacy, publish_at, history)
     category = category or pick_category(slot, history)
     cat_desc, guide, tone, cat_tags = CATEGORIES[category]
+    report("plan", f"이번 회차는 '{LABELS[category]}'로 갑니다!", "pd", stage="plan", slot=slot, category=category,
+           label=LABELS[category], publish_at=publish_at.isoformat() if publish_at else None,
+           topic=None, title=None, voice=None, progress=None)
     if not topic:
+        report("plan", "주제 회의 시작! 지난 영상이랑 안 겹치게 고를게요", "gemini")
         topic = pick_topic(PROFILE, f"{SLOTS[slot][0]}\n이번 카테고리: {cat_desc}", [h["topic"] for h in history])
+    report("plan", f"주제 확정: {topic}", "gemini", topic=topic)
     print(f"▶ [{slot}/{category}] 주제: {topic}")
+    report("script", "대본 쓰기 시작합니다 ✍️", "gemini", stage="script")
     s = write_script(f"{topic}\n(채널 콘셉트: {PROFILE})\n(카테고리 지침: {guide}){SCENE_RULE}", seconds=30)
     title, sentences = s["title"], s["sentences"]
+    report("script", f"첫 문장은 \"{sentences[0]}\"", "gemini")
+    report("script", f"제목 '{title}', 문장 {len(sentences)}개로 대본 확정!", "gemini", title=title)
     print(f"  제목: {title}\n" + "\n".join(f"  - {x}" for x in sentences) + "\n  장면: " + " / ".join(s.get("scenes") or []))
 
     now = datetime.now(KST)
@@ -142,7 +151,11 @@ def run_play(slot: str, upload: bool, privacy: str, publish_at: datetime | None,
     now = datetime.now(KST)
     out = BASE / "output" / f"{now:%Y%m%d_%H%M}_{slot}_play.mp4"
     out.parent.mkdir(exist_ok=True)
+    report("play", "오늘은 게임 플레이 영상! 투게독 접속해서 촬영 시작합니다 🎮", "player", stage="play", slot=slot,
+           category="play", label="게임 플레이", publish_at=publish_at.isoformat() if publish_at else None,
+           topic="투게독 플레이", title=None, voice=None, progress=None)
     s = make_play(out)
+    report("play", f"촬영 · 편집 끝! 제목은 '{s['title']}'", "player", title=s["title"])
     print(f"▶ [{slot}/play] 제목: {s['title']}")
     record = {"date": now.isoformat(timespec="minutes"), "slot": slot, "category": "play", "topic": "투게독 플레이",
               "title": s["title"], "file": out.name, "video_id": None,
@@ -174,6 +187,12 @@ def finish(record: dict, s: dict, out, upload: bool, privacy: str, publish_at, h
     return record
 
 
+def report_error(msg: str):
+    """지금 일하던 부서 직원이 문제 보고."""
+    from office import current_dept
+    report(current_dept(), "앗, 문제가 생겼어요: " + (msg.strip().splitlines() or ["?"])[0][:120], "", kind="error")
+
+
 def run_with_retry(**kw) -> dict | None:
     """실패 시 새 주제로 1번 더 시도 (Gemini 과부하·영상 검색 실패 등 일시적 오류 대비)."""
     for attempt in (1, 2):
@@ -185,9 +204,13 @@ def run_with_retry(**kw) -> dict | None:
             if "토큰" in str(e) or "채널" in str(e):  # 로그인 문제는 재시도해도 소용없음
                 raise
             print(f"⚠ {e}")
-        except Exception:
+            report_error(str(e))
+        except Exception as e:
             traceback.print_exc()
+            report_error(f"{type(e).__name__}: {e}")
         print("⚠ 실패 → 재시도" if attempt == 1 else "❌ 2회 모두 실패")
+        report("plan", "새 주제로 다시 해볼게요!" if attempt == 1 else "두 번 다 실패했어요… 다음 근무 때 다시 채울게요",
+               "pd", stage="plan", kind="error" if attempt == 2 else "work")
     return None
 
 
@@ -205,6 +228,7 @@ def schedule():
             failed.append(at)
             continue
         print(f"\n===== {at:%m/%d %H:%M} 공개 예약분 ({slot}) =====")
+        report("plan", f"{at:%m/%d %H:%M} 공개분 작업 착수합니다!", "pd", stage="plan")
         if not run_with_retry(slot=slot, topic=None, upload=True, privacy="private", publish_at=at):
             failed.append(at)
         os.environ.pop("VOICE", None)  # 목소리 고정은 첫 편에만
