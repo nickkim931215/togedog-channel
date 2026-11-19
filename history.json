@@ -328,5 +328,66 @@
   "file": "20261118_0506_morning_푸들_미용에_숨겨진_놀라운_비밀.mp4",
   "video_id": "wiFCSdddgak",
   "publish_at": "2026-11-19T06:30:00+09:00"
+ },
+ {
+  "date": "2026-11-19T12:21+09:00",
+  "slot": "evening",
+  "category": "walk_tips",
+  "topic": "어두운 저녁 산책할 때 강아지가 낮보다 훨씬 예민해지는 의외의 이유",
+  "title": "저녁 산책 때 강아지가 예민해지는 이유",
+  "file": "20261119_1221_evening_저녁_산책_때_강아지가_예민해지는_이유.mp4",
+  "video_id": "-GEYX03_fDc",
+  "publish_at": "2026-11-19T18:00:00+09:00",
+  "clips": [
+   "pixabay:98825",
+   "pixabay:45973",
+   "pixabay:45972",
+   "pixabay:98815",
+   "pixabay:157990",
+   "pixabay:98830",
+   "pixabay:287299",
+   "pixabay:98824"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-19T12:26+09:00",
+  "slot": "night",
+  "category": "behavior",
+  "topic": "보호자를 빤히 바라보다 천천히 눈을 깜빡이는 강아지의 심쿵 속뜻",
+  "title": "강아지가 천천히 눈 깜빡이는 심쿵 속뜻",
+  "file": "20261119_1226_night_강아지가_천천히_눈_깜빡이는_심쿵_속뜻.mp4",
+  "video_id": "244GK8XRQag",
+  "publish_at": "2026-11-19T21:00:00+09:00",
+  "clips": [
+   "pixabay:222837",
+   "pixabay:116041",
+   "pixabay:133963",
+   "pixabay:262181",
+   "pixabay:251873",
+   "pixabay:368117",
+   "pixabay:15305"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-19T12:32+09:00",
+  "slot": "morning",
+  "category": "walk_tips",
+  "topic": "아침 산책 나가기 전, 강아지에게 물 한 모금 꼭 챙겨줘야 하는 의외의 이유",
+  "title": "아침 산책 전 물 한 모금이 필요한 이유",
+  "file": "20261119_1232_morning_아침_산책_전_물_한_모금이_필요한_이유.mp4",
+  "video_id": "-JfaInxXSIo",
+  "publish_at": "2026-11-20T06:30:00+09:00",
+  "clips": [
+   "pixabay:98814",
+   "pixabay:15304",
+   "pixabay:234409",
+   "pixabay:28336",
+   "pixabay:5631",
+   "pixabay:4727",
+   "pixabay:8752"
+  ],
+  "bgm": "game.mp3"
  }
 ]
