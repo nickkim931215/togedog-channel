@@ -15,7 +15,6 @@ import traceback
 from datetime import datetime, timedelta, timezone
 
 from settings import BASE
-import stock_video
 
 KST = timezone(timedelta(hours=9))
 CHANNEL = "투게독"
@@ -160,6 +159,7 @@ def finish(record: dict, s: dict, out, upload: bool, privacy: str, publish_at, h
         record["video_id"] = upload_video(out, f"{s['title']} #Shorts", CHANNEL, description=desc,
                                           tags=list(dict.fromkeys(BASE_TAGS + cat_tags + tags)), privacy=privacy,
                                           publish_at=publish_at)
+    import stock_video  # 위에서 import하면 --plan(패키지 설치 전)이 requests 없어서 죽음
     record["clips"] = stock_video.take_picked()  # 다음 영상들이 같은 배경 클립을 안 쓰게
     import shorts_maker
     if shorts_maker.LAST_BGM:
