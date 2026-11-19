@@ -409,5 +409,26 @@
    "pixabay-img:2945855"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-19T18:28+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "노을 지는 한강에서 콩이랑 저녁 산책 🐾",
+  "file": "20261119_1828_evening_play.mp4",
+  "video_id": "MTgo-B_Ethg",
+  "play": {
+   "seed": 80509,
+   "cast": 19,
+   "time": "night",
+   "scenes": [
+    "photo",
+    "futsal",
+    "river"
+   ]
+  },
+  "publish_at": "2026-11-20T18:00:00+09:00",
+  "clips": []
  }
 ]
