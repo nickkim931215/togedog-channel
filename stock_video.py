@@ -373,10 +373,76 @@ def detect_breed(text: str) -> str:
     return next((k for k in sorted(BREEDS, key=len, reverse=True) if k in flat), "")
 
 
-def _breed_hits(kind: str, breed: str, used, key, allow_recent: bool) -> list[dict]:
-    q, groups = BREEDS[breed]
+BREED_VARIANT_PROMPT = """유튜브 쇼츠 배경으로 {breed}({q}) 영상·사진을 Pixabay(무료 영상 사이트)에서 찾는 중이야.
+{context}
+
+이 견종이 꼭 나오는 다른 검색어를 만들어 줘.
+- "en": 다른 영어 표현 3개 (예: chihuahua puppy, chihuahua dog walking — 장면 내용에 맞는 행동·장소를 붙여도 좋음)
+- 그리고 아래 언어마다 그 언어로 자연스러운 검색어 1개씩: {langs}
+- 검색어는 1~3단어, 견종 이름을 꼭 넣기
+- "names": 그 언어로 이 견종 이름만 1~3개 (개·강아지·dog·perro 같은 일반 단어 금지) — Pixabay 태그에 실제로 붙는 표기 (예: ko ["치와와"], ja ["チワワ"], de ["chihuahua"], 골든리트리버 ko ["골든 리트리버","골든리트리버"])
+JSON으로만 답해: {{"en": [{{"q": "...", "names": [...]}}, ...], "ko": {{"q": "...", "names": [...]}}, "ja": {{...}}, ...}}"""
+
+
+# Gemini가 견종 이름에 '강아지 · dog · perro' 같은 일반 단어를 섞으면 다른 견종이 통과함 → 견종 이름만 남김
+GENERIC_KO_JA = {"개", "강아지", "반려견", "애완견", "소형견", "중형견", "대형견", "강아지들",
+                 "犬", "いぬ", "イヌ", "子犬", "小型犬", "中型犬", "大型犬", "ペット", "わんちゃん"}
+
+
+def _breed_name_ok(name: str, breed: str) -> bool:
+    """영어·유럽 언어 표기는 영어 견종 단어(chihuahua · bichon …)가 들어 있어야, 한국어·일본어 표기는 일반 단어가 아니어야 통과."""
+    if len(name) < 2:
+        return False
+    if name in GENERIC_KO_JA:
+        return False
+    if any("가" <= c <= "힣" for c in name):  # 한국어: 견종 이름 앞 두 글자가 들어 있어야 (치와와 · 골든 리트리버)
+        return breed[:2] in name.replace(" ", "")
+    if any("぀" <= c <= "鿿" for c in name):  # 일본어: 일반 단어만 아니면 (チワワ · ビション)
+        return True
+    # 영어·유럽 언어: 영어 견종 단어 묶음이 다 들어 있어야 (golden retriever O, retriever 만 X)
+    return any(all(w in name for w in g) for g in BREEDS[breed][1])
+
+
+def _breed_variants(breed: str, context: str) -> list[tuple[str, str, list[str]]]:
+    """견종이 들어간 다른 표현·다른 언어 검색어 [(언어, 검색어, 그 언어의 견종 이름들)]. 실패하면 빈 목록."""
+    q = BREEDS[breed][0]
+    key = f"breed:{breed}"
+    if key in _VARIANTS:
+        return _VARIANTS[key]
+    out = []
+    try:
+        from google import genai
+        from google.genai import types
+
+        from script_writer import HTTP, _generate
+
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=HTTP)
+        langs = ", ".join(f"{k}({v})" for k, v in LANGS.items())
+        resp = _generate(client, JUDGE_MODELS,
+                         BREED_VARIANT_PROMPT.format(breed=breed, q=q, context=context, langs=langs),
+                         types.GenerateContentConfig(response_mime_type="application/json", temperature=0.7))
+        data = json.loads(resp.text)
+        for lang in ["en", *LANGS]:
+            items = data.get(lang) or []
+            for it in items if isinstance(items, list) else [items]:
+                if not isinstance(it, dict):
+                    continue
+                vq = str(it.get("q") or "").strip()
+                names = [n for n in (str(w).strip().lower() for w in it.get("names") or []) if _breed_name_ok(n, breed)]
+                if vq and names and vq.lower() != q.lower():
+                    out.append((lang, vq, names))
+    except (Exception, SystemExit) as e:  # 실패해도 영어 견종 이름만으로 계속
+        print(f"    (견종 다른 검색어 만들기 건너뜀: {str(e)[:100]})")
+    _VARIANTS[key] = out
+    return out
+
+
+def _breed_hits(kind: str, breed: str, used, key, allow_recent: bool, lang="en", q="", names=()) -> list[dict]:
+    """그 견종 태그가 붙은 영상/사진. lang·q·names 를 주면 그 언어 검색어로 찾고 그 언어 견종 이름으로 확인."""
+    base_q, groups = BREEDS[breed]
     url = "https://pixabay.com/api/videos/" if kind == "video" else "https://pixabay.com/api/"
-    params = {"key": key, "q": q, "per_page": 100, "safesearch": "true", "order": "popular"}
+    params = {"key": key, "q": (q or base_q)[:100], "lang": lang, "per_page": 100, "safesearch": "true",
+              "order": "popular"}
     params.update({"video_type": "film"} if kind == "video" else {"image_type": "photo"})
     r = requests.get(url, params=params, timeout=20)
     r.raise_for_status()
@@ -384,11 +450,37 @@ def _breed_hits(kind: str, breed: str, used, key, allow_recent: bool) -> list[di
     recent = set() if allow_recent else _recent_ids()
     out = []
     for h in r.json().get("hits", []):
-        tags = _tag_words(h.get("tags", ""))
+        raw = h.get("tags", "").lower()
+        tags = _tag_words(raw)
         if (tag, h["id"]) in used or f"{tag}:{h['id']}" in recent or tags & SKIP_TAGS:
             continue
-        if any(g <= tags for g in groups):
+        if lang == "en" and not names:
+            ok = any(g <= tags for g in groups)
+        else:  # 다른 언어는 태그가 그 언어로 옴 → 견종 이름이 태그 글자에 들어 있는지
+            ok = any(n in raw for n in names) or any(g <= tags for g in groups)
+        if ok:
             out.append(h)
+    return out
+
+
+def _breed_mixed(kind: str, breed: str, used, key, allow_recent: bool, extra: list) -> list[dict]:
+    """영어 견종 이름 + 다른 표현·언어 검색 결과를 번갈아 섞음 (같은 영상·사진은 한 번만)."""
+    per = []
+    for lang, q, names in [("en", "", [])] + extra:
+        try:
+            hits = _breed_hits(kind, breed, used, key, allow_recent, lang, q, names)
+        except requests.RequestException as e:
+            print(f"    pixabay 견종 검색 실패({lang} {q}): {e}")
+            continue
+        random.shuffle(hits)
+        if hits:
+            per.append(hits)
+    out, seen = [], set()
+    for i in range(max(map(len, per), default=0)):
+        for hits in per:
+            if i < len(hits) and hits[i]["id"] not in seen:
+                seen.add(hits[i]["id"])
+                out.append(hits[i])
     return out
 
 
@@ -416,15 +508,20 @@ def _breed_clip(breed: str, used, min_sec, key, context: str) -> str | None:
     q = BREEDS[breed][0]
     ctx = f"{context}\n⚠️ 이 장면엔 반드시 {breed}({q})가 보여야 함. 다른 견종이면 0."
     judging = bool(context and os.environ.get("GEMINI_API_KEY"))
+    # 영어 견종 이름 + 다른 표현·언어(예: 치와와 · チワワ · perro chihuahua) 무작위 3개를 섞어 후보를 넓힘
+    variants = _breed_variants(breed, context) if judging else []
+    extra = random.sample(variants, min(VARIANT_PICK, len(variants))) if variants else []
+    if extra:
+        print(f"    🐶 {breed} 검색어: {q}, " + ", ".join(f"{lang}:{vq}" for lang, vq, _ in extra))
     rejected = set()  # 이미 안 맞는다고 본 후보는 다시 판단 안 함
     for kind in ("video", "photo"):
         for allow_recent in (False, True):
-            hits = [h for h in _breed_hits(kind, breed, used, key, allow_recent) if (kind, h["id"]) not in rejected]
+            hits = [h for h in _breed_mixed(kind, breed, used, key, allow_recent, extra)
+                    if (kind, h["id"]) not in rejected]
             if kind == "video":
                 hits = [h for h in hits if _best_file(h)]
             if not hits:
                 continue
-            random.shuffle(hits)
             pool = [(0, 0, 0, h, _best_file(h) if kind == "video" else None) for h in hits[:JUDGE_MAX]]
             idx, _ = _judge(pool, q, ctx) if judging else (None, "")
             if idx == -1:

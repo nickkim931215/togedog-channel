@@ -22,7 +22,7 @@ Python 3.12(Actions) · ffmpeg(BtbN 빌드, libass) · Gemini(대본 + TTS 목�
 | `script_writer.py` | Gemini 대본(모델이 404면 `discover_models()`로 대체 모델 찾기) |
 | `voice_gemini.py` | Gemini TTS 목소리 4종(Kore · Aoede · Leda · Puck) + Whisper 정렬 + 끝 잡음 자르기 |
 | `shorts_maker.py` | 강아지 쇼츠 편집(배경 영상 · 자막 · 음성) |
-| `stock_video.py` | Pixabay 배경 영상 검색(검색어 첫 단어 dog). 장면마다 영어 + 다른 영어 표현·다른 언어(ko ja de es fr it pt nl) 중 무작위 3개 후보를 섞어 Gemini가 고름(11/20, 같은 영상 반복 줄이기) |
+| `stock_video.py` | Pixabay 배경 영상 검색(검색어 첫 단어 dog). 장면마다 영어 + 다른 영어 표현·다른 언어(ko ja de es fr it pt nl) 중 무작위 3개 후보를 섞어 Gemini가 고름(11/20, 같은 영상 반복 줄이기). 견종 장면도 같은 방식 — 단 그 언어의 견종 이름이 태그에 있어야 통과(`_breed_name_ok`: 강아지·dog 같은 일반 단어 거름) |
 | `play_maker.py` | 🎮 플레이 영상: togedog.app 촬영 모드를 로봇이 조작해 찍고 내레이션 · 자막 · 게임 BGM · 마무리 QR |
 | `vclock.js` | 가상 시계(그래픽 카드 없는 클라우드에서도 1장 = 1/30초로 매끄럽게 찍기) |
 | `healthcheck.py` · `alert.py` | 자가 점검 → 문제 있을 때만 디스코드 DM, 일요일 주간 보고 |
