@@ -3,6 +3,7 @@
 .env에 PIXABAY_API_KEY 또는 PEXELS_API_KEY 중 있는 것을 사용 (둘 다 있으면 Pexels 먼저).
 - 최근 영상들에 쓴 클립은 다시 안 씀 (history.json의 clips)
 - 문장(context)을 주면 Gemini가 후보 미리보기 사진을 보고 내용에 맞는 영상을 고름
+- Pixabay는 영어 검색어에 다른 영어 표현 · 다른 언어(한국어·일본어·독일어 등) 검색어 후보를 섞어서 고름 (비슷한 영상 반복 줄이기)
 """
 import json
 import os
@@ -102,26 +103,39 @@ def _best_file(h):
     return min(ok, key=lambda v: v["width"]) if ok else max(pool, key=lambda v: v["width"])
 
 
-def _pixabay_cands(query, used, min_sec, key, strict=True) -> list[tuple]:
-    """관련도 순으로 정렬한 후보 [(점수, 세로?, 충분히 김?, hit, 파일)]. 최근 영상에 쓴 클립은 제외."""
+def _pixabay_cands(query, used, min_sec, key, strict=True, lang="en", subjects=()) -> list[tuple]:
+    """관련도 순으로 정렬한 후보 [(점수, 세로?, 충분히 김?, hit, 파일)]. 최근 영상에 쓴 클립은 제외.
+    lang = Pixabay 검색 언어(태그도 그 언어로 옴), subjects = 그 언어의 주인공 단어들(태그에 하나는 있어야 함)."""
     r = requests.get("https://pixabay.com/api/videos/", timeout=20,
-                     params={"key": key, "q": query[:100], "per_page": 100, "safesearch": "true", "order": "popular",
-                             "video_type": "film"})  # 실사만 (일러스트/애니메이션 제외)
+                     params={"key": key, "q": query[:100], "lang": lang, "per_page": 100, "safesearch": "true",
+                             "order": "popular", "video_type": "film"})  # 실사만 (일러스트/애니메이션 제외)
     r.raise_for_status()
     recent = _recent_ids()
     hits = [h for h in r.json().get("hits", [])
             if ("pixabay", h["id"]) not in used and f"pixabay:{h['id']}" not in recent]
 
-    qwords = [_norm(w) for w in query.split() if len(w) > 2]
-    subject = next((w for w in qwords if w not in ADJECTIVES), "")
+    if lang == "en":
+        qwords = [_norm(w) for w in query.split() if len(w) > 2]
+        subject = next((w for w in qwords if w not in ADJECTIVES), "")
+    else:  # 다른 언어: 영어식 복수형 정리 없이 그대로
+        qwords, subject = [w.lower() for w in query.split()], ""
+    subs = [_norm(w) if lang == "en" else w.lower() for w in subjects] or ([subject] if subject else [])
     scored = []
     for h in hits:
         v = _best_file(h)
-        tags = _tag_words(h.get("tags", ""))
-        if not v or tags & SKIP_TAGS or (strict and subject and subject not in tags):
+        raw = h.get("tags", "").lower()
+        if lang == "en":
+            tags = _tag_words(raw)
+        else:  # 태그 통째 + 낱말 (일본어·중국어는 띄어쓰기가 없어 글자 포함으로 봄)
+            tags = {w for t in raw.split(",") for w in [t.strip(), *t.split()]}
+        has = (lambda w: w in raw) if lang in ("ja", "zh") else (lambda w: w in tags)  # noqa: E731
+        if not v or _tag_words(raw) & SKIP_TAGS:
+            continue
+        hit_subject = any(has(w) for w in subs)
+        if strict and subs and not hit_subject:
             continue
         # 태그가 검색어와 많이 겹칠수록 관련도 높음 (주인공 단어는 2점)
-        match = sum(w in tags for w in qwords) + (subject in tags)
+        match = sum(has(w) for w in qwords) + hit_subject
         scored.append((match, v["height"] > v["width"], h.get("duration", 0) >= min_sec, h, v))
     # 관련도 → 세로 → 충분히 긴 것 순
     scored.sort(key=lambda x: x[:3], reverse=True)
@@ -191,10 +205,102 @@ def _take(cand, used) -> str:
     return _download(v["url"], CACHE / "pixabay" / f"{h['id']}_{v['width']}x{v['height']}.mp4")
 
 
+# ---------- 여러 언어 · 다른 표현 ----------
+# 영어 검색어 하나로만 찾으면 인기순 상위 영상이 계속 겹침 → 다른 영어 표현 + 다른 언어 검색어도 섞어 후보를 넓힘.
+# (11/20 시험: '강아지 산책'을 영어 1개로 찾으면 100편, 표현·언어 7개를 합치면 서로 다른 영상 324편)
+LANGS = {"ko": "한국어", "ja": "일본어", "de": "독일어", "es": "스페인어", "fr": "프랑스어",
+         "it": "이탈리아어", "pt": "포르투갈어", "nl": "네덜란드어"}
+VARIANT_PICK = 3  # 장면마다 원래 영어 검색어 + 무작위 표현 3개로 검색해 후보를 섞음
+_VARIANTS: dict[str, list[tuple[str, str, list[str]]]] = {}
+
+VARIANT_PROMPT = """유튜브 쇼츠 배경 영상을 Pixabay(무료 영상 사이트)에서 찾는 중이야.
+{context}
+영어 검색어: {query}
+
+같은 장면을 찾을 다른 검색어를 만들어 줘.
+- "en": 다른 영어 표현 3개 (같은 뜻의 다른 단어·다른 각도, 예: dog walking park → puppy on leash outdoors, pet stroll sidewalk)
+- 그리고 아래 언어마다 그 언어로 자연스러운 검색어 1개씩 (직역보다 그 나라 사람이 실제로 검색할 말): {langs}
+- 검색어는 2~3단어, 주인공 명사(강아지 등)를 꼭 넣기
+- "subjects": 그 언어로 주인공을 뜻하는 단어 1~3개 — Pixabay 태그에 실제로 붙는 흔한 단어 (예: en ["dog","puppy"], ko ["개","강아지"], ja ["犬","子犬"], de ["hund","welpe"])
+JSON으로만 답해: {{"en": [{{"q": "...", "subjects": [...]}}, ...], "ko": {{"q": "...", "subjects": [...]}}, "ja": {{...}}, ...}}"""
+
+
+def _variants(query: str, context: str) -> list[tuple[str, str, list[str]]]:
+    """같은 장면의 다른 검색어들 [(언어, 검색어, 주인공 단어들)]. Gemini 실패하면 빈 목록(영어만으로 진행)."""
+    if query in _VARIANTS:
+        return _VARIANTS[query]
+    out = []
+    try:
+        from google import genai
+        from google.genai import types
+
+        from script_writer import HTTP, _generate
+
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=HTTP)
+        langs = ", ".join(f"{k}({v})" for k, v in LANGS.items())
+        resp = _generate(client, JUDGE_MODELS, VARIANT_PROMPT.format(context=context, query=query, langs=langs),
+                         types.GenerateContentConfig(response_mime_type="application/json", temperature=0.7))
+        data = json.loads(resp.text)
+        for lang in ["en", *LANGS]:
+            items = data.get(lang) or []
+            for it in items if isinstance(items, list) else [items]:
+                if not isinstance(it, dict):
+                    continue
+                q = str(it.get("q") or "").strip()
+                subs = [str(w).strip() for w in it.get("subjects") or [] if str(w).strip()]
+                if q and q.lower() != query.lower():
+                    out.append((lang, q, subs))
+    except (Exception, SystemExit) as e:  # 실패해도 영어 검색어만으로 계속
+        print(f"    (다른 검색어 만들기 건너뜀: {str(e)[:100]})")
+    _VARIANTS[query] = out
+    return out
+
+
+def _mixed_pool(query: str, extra: list, used, min_sec, key) -> list[tuple]:
+    """원래 영어 검색어 + 다른 표현·언어 검색어 후보를 번갈아 섞은 목록 (같은 영상은 한 번만)."""
+    per = []
+    for lang, q, subs in [("en", query, [])] + extra:
+        try:
+            scored = _pixabay_cands(q, used, min_sec, key, True, lang, subs)
+        except requests.RequestException as e:
+            print(f"    pixabay 검색 실패({lang} {q}): {e}")
+            continue
+        top = [x for x in scored if x[0] >= scored[0][0] - 1][:JUDGE_MAX * 2] if scored else []
+        random.shuffle(top)
+        if top:
+            per.append(top)
+    pool, seen = [], set()
+    for i in range(max(map(len, per), default=0)):
+        for top in per:
+            if i < len(top) and top[i][3]["id"] not in seen:
+                seen.add(top[i][3]["id"])
+                pool.append(top[i])
+    return pool
+
+
 def _pixabay_pick(tries: list[tuple[str, bool]], used, min_sec, key, context: str) -> str | None:
-    """검색어를 차례로 넓혀 가며 후보를 모으고, 문장에 맞는 영상을 골라 다운로드."""
+    """여러 언어·표현으로 후보를 섞어 먼저 고르고, 안 맞으면 영어 검색어를 차례로 넓혀 가며 다시."""
     judging = bool(context and os.environ.get("GEMINI_API_KEY"))
     queue, tried, first, alts, judged = list(tries), set(), None, 0, 0
+    variants = _variants(tries[0][0], context) if judging else []
+    if variants:
+        extra = random.sample(variants, min(VARIANT_PICK, len(variants)))
+        pool = _mixed_pool(tries[0][0], extra, used, min_sec, key)[:JUDGE_MAX]
+        if pool:
+            idx, alt = _judge(pool, tries[0][0], context)
+            judged += 1
+            names = ", ".join(f"{lang}:{q}" for lang, q, _ in extra)
+            if idx is None:
+                return _take(pool[0], used)
+            if idx >= 0:
+                print(f"    ✔ 여러 검색어({names}) 후보 {len(pool)}개 중 선택 → {pool[idx][3].get('tags', '')[:60]}")
+                return _take(pool[idx], used)
+            print(f"    ✘ 여러 검색어({names}) 후보 {len(pool)}개 모두 안 맞음 → 영어 검색어로")
+            first = pool[0]
+            tried.add((tries[0][0], True))  # 원래 검색어는 방금 섞어서 봤음
+            if alt:
+                queue.insert(0, (alt, True))
+                alts += 1
     while queue and judged < JUDGE_ROUNDS:
         q, strict = queue.pop(0)
         if (q, strict) in tried:
