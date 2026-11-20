@@ -530,5 +530,25 @@
    "pixabay:372467"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-21T07:20+09:00",
+  "slot": "morning",
+  "category": "behavior",
+  "topic": "강아지가 꼬리를 '오른쪽'으로 흔들 때와 '왼쪽'으로 흔들 때의 놀라운 감정 차이",
+  "title": "강아지 꼬리 방향에 숨겨진 비밀",
+  "file": "20261121_0720_morning_강아지_꼬리_방향에_숨겨진_비밀.mp4",
+  "video_id": "YD8cPQmB2OE",
+  "publish_at": "2026-11-22T06:30:00+09:00",
+  "clips": [
+   "pixabay:45588",
+   "pixabay:98822",
+   "pixabay:110227",
+   "pixabay:111250",
+   "pixabay:210733",
+   "pixabay:87875",
+   "pixabay:109815"
+  ],
+  "bgm": "game.mp3"
  }
 ]
