@@ -470,5 +470,45 @@
    "pixabay:60132"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-20T18:08+09:00",
+  "slot": "noon",
+  "category": "behavior",
+  "topic": "혼내려고 하면 눈 피하고 갑자기 '하품' 쩌억 하는 강아지의 억울한 속뜻",
+  "title": "혼낼 때 하품하는 강아지 속마음",
+  "file": "20261120_1808_noon_혼낼_때_하품하는_강아지_속마음.mp4",
+  "video_id": "j1NHwBgnvKc",
+  "publish_at": "2026-11-21T12:30:00+09:00",
+  "clips": [
+   "pixabay:186205",
+   "pixabay:45144",
+   "pixabay:109816",
+   "pixabay:371856",
+   "pixabay:110228",
+   "pixabay:180682",
+   "pixabay:77626"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-20T18:14+09:00",
+  "slot": "evening",
+  "category": "walk_tips",
+  "topic": "산책 끝나고 집에 안 들어가려고 네 발로 버티는 강아지, 스스로 발걸음 돌리게 만드는 꿀팁",
+  "title": "집 안 가려는 강아지 쉽게 들어오게 하는 꿀팁",
+  "file": "20261120_1814_evening_집_안_가려는_강아지_쉽게_들어오게_하는_꿀팁.mp4",
+  "video_id": "NmjIYBn52OU",
+  "publish_at": "2026-11-21T18:00:00+09:00",
+  "clips": [
+   "pixabay:4029",
+   "pixabay:233504",
+   "pixabay:40357",
+   "pixabay:65620",
+   "pixabay:197721",
+   "pixabay:111254",
+   "pixabay:24541"
+  ],
+  "bgm": "game.mp3"
  }
 ]
