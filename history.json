@@ -611,5 +611,30 @@
    "pixabay:77534"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-22T06:04+09:00",
+  "slot": "morning",
+  "category": "breed",
+  "topic": "소시지 닮은 귀여운 닥스훈트가 원래 사나운 오소리를 잡던 전문 사냥꾼이었다는 반전",
+  "title": "닥스훈트가 원래 맹수 사냥꾼이었다고요?",
+  "file": "20261122_0604_morning_닥스훈트가_원래_맹수_사냥꾼이었다고요.mp4",
+  "video_id": "Tj-BKjB9eiw",
+  "publish_at": "2026-11-23T06:30:00+09:00",
+  "clips": [
+   "pixabay:26315",
+   "pixabay:2296",
+   "pixabay:260913",
+   "pixabay:103361",
+   "pixabay:260914",
+   "pixabay:77509",
+   "pixabay:117914",
+   "pixabay:77504",
+   "pixabay:26314",
+   "pixabay:3166",
+   "pixabay-img:672780",
+   "pixabay-img:3218503"
+  ],
+  "bgm": "game.mp3"
  }
 ]
