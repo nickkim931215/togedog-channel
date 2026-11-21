@@ -550,5 +550,46 @@
    "pixabay:109815"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-21T17:44+09:00",
+  "slot": "noon",
+  "category": "cute",
+  "topic": "화장실만 가면 문 앞까지 쫄래쫄래 따라와 지키고 서 있는 강아지의 사랑스러운 속뜻",
+  "title": "화장실 문 앞 지키는 강아지 속뜻",
+  "file": "20261121_1744_noon_화장실_문_앞_지키는_강아지_속뜻.mp4",
+  "video_id": "5xRvKVeSLLY",
+  "publish_at": "2026-11-22T12:30:00+09:00",
+  "clips": [
+   "pixabay:217806",
+   "pixabay:11342",
+   "pixabay:171030",
+   "pixabay:221962",
+   "pixabay:111251",
+   "pixabay:77510"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-21T17:50+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "노을 질 때 한강 산책 같이 갈래요? 🐶",
+  "file": "20261121_1750_evening_play.mp4",
+  "video_id": "YB3iXNprg04",
+  "play": {
+   "seed": 251054,
+   "cast": 33,
+   "time": "night",
+   "scenes": [
+    "talk",
+    "walk",
+    "photo",
+    "futsal"
+   ]
+  },
+  "publish_at": "2026-11-22T18:00:00+09:00",
+  "clips": []
  }
 ]
