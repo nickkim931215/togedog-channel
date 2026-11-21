@@ -591,5 +591,25 @@
   },
   "publish_at": "2026-11-22T18:00:00+09:00",
   "clips": []
+ },
+ {
+  "date": "2026-11-22T03:11+09:00",
+  "slot": "night",
+  "category": "cute",
+  "topic": "뽀뽀하려고 얼굴만 가까이 대면 슬그머니 고개 홱 돌리는 강아지의 귀여운 밀당 속뜻",
+  "title": "뽀뽀 피하는 강아지의 반전 속뜻",
+  "file": "20261122_0311_night_뽀뽀_피하는_강아지의_반전_속뜻.mp4",
+  "video_id": "CwDUBk8FpNI",
+  "publish_at": "2026-11-22T21:00:00+09:00",
+  "clips": [
+   "pixabay:131920",
+   "pixabay:175478",
+   "pixabay:25094",
+   "pixabay:85663",
+   "pixabay:45587",
+   "pixabay:237987",
+   "pixabay:77534"
+  ],
+  "bgm": "game.mp3"
  }
 ]
