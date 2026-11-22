@@ -695,5 +695,25 @@
    "pixabay-img:6659330"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-23T06:12+09:00",
+  "slot": "morning",
+  "category": "cute",
+  "topic": "산책 가자는 말 한마디에 네 발로 '타다닥' 탭댄스 추는 강아지의 치명적으로 귀여운 이유",
+  "title": "산책 소리에 탭댄스 추는 이유",
+  "file": "20261123_0612_morning_산책_소리에_탭댄스_추는_이유.mp4",
+  "video_id": "lTN961p-daU",
+  "publish_at": "2026-11-24T06:30:00+09:00",
+  "clips": [
+   "pixabay:111268",
+   "pixabay:84757",
+   "pixabay:120522",
+   "pixabay:19572",
+   "pixabay:111252",
+   "pixabay:156962",
+   "pixabay:256244"
+  ],
+  "bgm": "game.mp3"
  }
 ]
