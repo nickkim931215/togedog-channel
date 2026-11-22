@@ -636,5 +636,45 @@
    "pixabay-img:3218503"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-22T17:45+09:00",
+  "slot": "noon",
+  "category": "walk_tips",
+  "topic": "햇볕 좋은 날 산책 나가기 전, 아스팔트에 손등을 딱 7초 대봐야 하는 중요한 이유",
+  "title": "산책 전 아스팔트에 손등 7초 대봐야 하는 이유",
+  "file": "20261122_1745_noon_산책_전_아스팔트에_손등_7초_대봐야_하는_이유.mp4",
+  "video_id": "lMoh42gjObw",
+  "publish_at": "2026-11-23T12:30:00+09:00",
+  "clips": [
+   "pixabay:6401",
+   "pixabay:180967",
+   "pixabay:127627",
+   "pixabay:109817",
+   "pixabay:21519",
+   "pixabay:111253",
+   "pixabay:127644"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-22T17:52+09:00",
+  "slot": "evening",
+  "category": "cute",
+  "topic": "이름 부르면 몸은 꿈쩍 않고 꼬리만 바닥에 '탁! 탁!' 치는 강아지의 사랑스러운 속뜻",
+  "title": "이름 부르면 꼬리만 탁탁 치는 이유",
+  "file": "20261122_1752_evening_이름_부르면_꼬리만_탁탁_치는_이유.mp4",
+  "video_id": "BvLbDDkwnNo",
+  "publish_at": "2026-11-23T18:00:00+09:00",
+  "clips": [
+   "pixabay:109611",
+   "pixabay:37477",
+   "pixabay:77511",
+   "pixabay:22752",
+   "pixabay:132355",
+   "pixabay:233673",
+   "pixabay:109617"
+  ],
+  "bgm": "game.mp3"
  }
 ]
