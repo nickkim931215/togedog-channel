@@ -676,5 +676,24 @@
    "pixabay:109617"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-23T03:39+09:00",
+  "slot": "night",
+  "category": "breed",
+  "topic": "솜사탕 같은 비숑 프리제가 밤마다 온 집안을 폭풍 질주하는 '비숑 타임'의 진짜 이유",
+  "title": "비숑이 밤마다 폭풍 질주하는 진짜 이유",
+  "file": "20261123_0339_night_비숑이_밤마다_폭풍_질주하는_진짜_이유.mp4",
+  "video_id": "STwWmyuButs",
+  "publish_at": "2026-11-23T21:00:00+09:00",
+  "clips": [
+   "pixabay-img:3512586",
+   "pixabay-img:4016160",
+   "pixabay-img:4398243",
+   "pixabay-img:753464",
+   "pixabay-img:4398249",
+   "pixabay-img:6659330"
+  ],
+  "bgm": "game.mp3"
  }
 ]
