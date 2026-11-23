@@ -715,5 +715,24 @@
    "pixabay:256244"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-23T13:48+09:00",
+  "slot": "morning",
+  "category": "breed",
+  "topic": "소시지 닮은 닥스훈트가 원래 사나운 오소리를 잡던 용감한 사냥견이었다는 반전",
+  "title": "귀여운 닥스훈트의 반전 넘치는 과거",
+  "file": "20261123_1348_morning_귀여운_닥스훈트의_반전_넘치는_과거.mp4",
+  "video_id": "isO_mVingG4",
+  "publish_at": "2026-11-27T06:30:00+09:00",
+  "clips": [
+   "pixabay:260914",
+   "pixabay:26314",
+   "pixabay:260913",
+   "pixabay:26315",
+   "pixabay-img:1018409",
+   "pixabay-img:4123618"
+  ],
+  "bgm": "game.mp3"
  }
 ]
