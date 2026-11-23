@@ -541,7 +541,43 @@ def _breed_clip(breed: str, used, min_sec, key, context: str) -> str | None:
     return None
 
 
-def fetch_clip(query: str, used: set, min_sec: float = 0, context: str = "", breed: str = "") -> str | None:
+def _any_dog_clip(used, min_sec, key) -> str | None:
+    """마지막 안전망 — 장면에 맞는 영상이 하나도 없어도 빈 화면 대신 강아지가 나오는 아무 영상 · 사진(일러스트 포함).
+    판단 없이, 최근에 쓴 것도 허용. (11/23 사장님: 닥스훈트 영상이 빈 화면으로 나옴 → 무조건 강아지 화면)"""
+    dog = {"dog", "dogs", "puppy", "puppies", "pet", "canine", "hound", "terrier"}
+    for q in ("dog", "puppy", "cute dog", "dog walking"):
+        for vtype in ("film", "all"):
+            r = requests.get("https://pixabay.com/api/videos/", timeout=20,
+                             params={"key": key, "q": q, "per_page": 100, "safesearch": "true",
+                                     "order": "popular", "video_type": vtype})
+            r.raise_for_status()
+            hits = [h for h in r.json().get("hits", [])
+                    if ("pixabay", h["id"]) not in used and _best_file(h)
+                    and _tag_words(h.get("tags", "").lower()) & dog
+                    and not _tag_words(h.get("tags", "").lower()) & SKIP_TAGS]
+            if hits:
+                hits.sort(key=lambda h: h.get("duration", 0) >= min_sec, reverse=True)
+                h = random.choice(hits[:15])
+                print(f"    🐕 맞는 영상이 없어 일반 강아지 영상으로 ({q})")
+                return _take((0, 0, 0, h, _best_file(h)), used)
+    for q in ("dog", "puppy", "dog illustration"):
+        r = requests.get("https://pixabay.com/api/", timeout=20,
+                         params={"key": key, "q": q, "per_page": 100, "safesearch": "true",
+                                 "order": "popular", "image_type": "all", "orientation": "vertical"})
+        r.raise_for_status()
+        hits = [h for h in r.json().get("hits", [])
+                if ("pixabay-img", h["id"]) not in used
+                and _tag_words(h.get("tags", "").lower()) & dog]
+        if hits:
+            h = random.choice(hits[:20])
+            used.add(("pixabay-img", h["id"]))
+            img = Path(_download(h.get("largeImageURL") or h["webformatURL"], CACHE / "pixabay_img" / f"{h['id']}.jpg"))
+            print(f"    🐕 맞는 영상이 없어 일반 강아지 사진·일러스트로 ({q})")
+            return _photo_clip(img, min_sec)
+    return None
+
+
+def _fetch_clip_main(query: str, used: set, min_sec: float = 0, context: str = "", breed: str = "") -> str | None:
     """검색어에 맞는 영상 1개를 받아 로컬 경로 반환 (없으면 None → 그라데이션 배경).
     context = 영상 제목 + 이 장면의 문장 — 있으면 Gemini가 내용에 맞는 영상을 고름.
     breed = 이 장면의 견종(한국어, detect_breed) — 있으면 그 견종 영상·사진만."""
@@ -571,4 +607,19 @@ def fetch_clip(query: str, used: set, min_sec: float = 0, context: str = "", bre
             return _pixabay_pick(tries, used, min_sec, os.environ["PIXABAY_API_KEY"], context)
         except requests.RequestException as e:
             print(f"    pixabay 검색 실패({query}): {e}")
+    return None
+
+
+def fetch_clip(query: str, used: set, min_sec: float = 0, context: str = "", breed: str = "") -> str | None:
+    """장면에 맞는 영상 → 없으면 일반 강아지 영상 · 사진 (빈 화면은 마지막 수단)."""
+    path = _fetch_clip_main(query, used, min_sec, context, breed)
+    if path:
+        return path
+    load_env()
+    key = os.environ.get("PIXABAY_API_KEY")
+    if key:
+        try:
+            return _any_dog_clip(used, min_sec, key)
+        except Exception as e:
+            print(f"    (일반 강아지 찾기 실패: {str(e)[:100]})")
     return None
