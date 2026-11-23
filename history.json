@@ -734,5 +734,47 @@
    "pixabay-img:4123618"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-23T18:44+09:00",
+  "slot": "noon",
+  "category": "cute",
+  "topic": "자기가 뀐 방귀 소리에 깜짝 놀라 엉덩이 쳐다보며 도망치는 강아지의 귀여운 이유",
+  "title": "자기 방귀에 놀라 도망치는 강아지",
+  "file": "20261123_1844_noon_자기_방귀에_놀라_도망치는_강아지.mp4",
+  "video_id": "OB0AIZ7H5w8",
+  "publish_at": "2026-11-24T12:30:00+09:00",
+  "clips": [
+   "pixabay:310782",
+   "pixabay:81",
+   "pixabay:65531",
+   "pixabay:236692",
+   "pixabay:23686",
+   "pixabay:109814",
+   "pixabay:110225"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-23T18:50+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "하루랑 한강 풋살장 다녀왔어요 🐶",
+  "file": "20261123_1850_evening_play.mp4",
+  "video_id": "KcgwB3Us60g",
+  "play": {
+   "seed": 427446,
+   "cast": 23,
+   "time": "day",
+   "scenes": [
+    "futsal",
+    "river",
+    "talk",
+    "walk"
+   ]
+  },
+  "publish_at": "2026-11-24T18:00:00+09:00",
+  "clips": []
  }
 ]
