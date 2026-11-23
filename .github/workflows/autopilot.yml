@@ -23,6 +23,9 @@ on:
       topic:
         description: "주제 (비우면 AI가 선정)"
         required: false
+      publish_at:
+        description: "예약 공개 시각 KST (예 2026-11-27T06:30, 비우면 즉시). 주제와 함께 쓰면 그 회차에 걸림"
+        required: false
       privacy:
         description: "공개 설정"
         required: false
@@ -152,6 +155,7 @@ jobs:
           TOPIC: ${{ inputs.topic }}
           CATEGORY: ${{ inputs.category }}
           PRIVACY: ${{ inputs.privacy || 'public' }}
+          PUBLISH_AT: ${{ inputs.publish_at }}
           DRY_RUN: ${{ inputs.dry_run }}
           PLAY_TEST: ${{ inputs.play_test }}
         run: |
@@ -160,6 +164,7 @@ jobs:
           ARGS=(--privacy "$PRIVACY")
           if [ -n "$TOPIC" ]; then ARGS+=(--topic "$TOPIC"); fi
           if [ -n "$CATEGORY" ]; then ARGS+=(--category "$CATEGORY"); fi
+          if [ -n "$PUBLISH_AT" ]; then ARGS+=(--publish-at "$PUBLISH_AT"); fi
           if [ "$DRY_RUN" = "true" ]; then ARGS+=(--no-upload); fi
           python autopilot.py "${ARGS[@]}"
 

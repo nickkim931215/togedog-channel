@@ -245,6 +245,7 @@ def main():
     p.add_argument("--category", choices=list(CATEGORIES))
     p.add_argument("--privacy", default="public", choices=["private", "unlisted", "public"])
     p.add_argument("--no-upload", action="store_true")
+    p.add_argument("--publish-at", help="이 시각(KST, 예 2026-11-27T06:30)에 예약 공개 — 수동 제작분을 정해진 회차에 걸 때")
     a = p.parse_args()
     if a.plan:
         todo = pending_slots(datetime.now(KST), load_history())
@@ -253,7 +254,15 @@ def main():
     if a.schedule:
         return schedule()
     slot = a.slot or current_slot(datetime.now(KST))
-    if not run_with_retry(slot=slot, topic=a.topic, upload=not a.no_upload, privacy=a.privacy, category=a.category):
+    at, privacy = None, a.privacy
+    if a.publish_at:
+        at = datetime.fromisoformat(a.publish_at).replace(tzinfo=KST)
+        slot = next((k for k, (hh, mm) in PUBLISH_TIMES.items() if (hh, mm) == (at.hour, at.minute)), None)
+        if not slot:
+            raise SystemExit("❌ --publish-at 은 공개 시각(06:30/12:30/18:00/21:00) 중 하나여야 함")
+        privacy = "private"  # 예약 공개는 비공개로 올린 뒤 publishAt 이 되면 공개
+    if not run_with_retry(slot=slot, topic=a.topic, upload=not a.no_upload, privacy=privacy, category=a.category,
+                          publish_at=at):
         raise SystemExit("❌ 2회 모두 실패")
 
 
