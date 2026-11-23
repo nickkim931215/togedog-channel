@@ -8,6 +8,7 @@
 import json
 import os
 import random
+import time
 from pathlib import Path
 
 import requests
@@ -35,16 +36,29 @@ def _recent_ids() -> set[str]:
     return {c for h in history[-RECENT_VIDEOS:] for c in h.get("clips", [])} | set(PICKED)
 
 
-def _download(url: str, path) -> str:
+def _download(url: str, path, tries: int = 5) -> str:
+    """받기. Pixabay CDN이 429(요청 과다)를 주면 기다렸다가 다시 (11/22 닥스훈트 영상이 이것 때문에 빈 화면이 됨)."""
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        with requests.get(url, stream=True, timeout=90, headers={"User-Agent": "Mozilla/5.0"}) as d:
-            d.raise_for_status()
-            tmp = path.with_suffix(".part")
-            with open(tmp, "wb") as out:
-                for chunk in d.iter_content(1 << 20):
-                    out.write(chunk)
-            tmp.replace(path)
+        for n in range(tries):
+            try:
+                with requests.get(url, stream=True, timeout=90, headers={"User-Agent": "Mozilla/5.0"}) as d:
+                    if d.status_code in (429, 500, 502, 503) and n < tries - 1:
+                        wait = min(int(d.headers.get("Retry-After", 0) or 0), 60) or 8 * (2 ** n)
+                        print(f"    (받기 {d.status_code} → {wait}초 뒤 다시)")
+                        time.sleep(wait)
+                        continue
+                    d.raise_for_status()
+                    tmp = path.with_suffix(".part")
+                    with open(tmp, "wb") as out:
+                        for chunk in d.iter_content(1 << 20):
+                            out.write(chunk)
+                    tmp.replace(path)
+                    break
+            except (requests.ConnectionError, requests.Timeout):
+                if n == tries - 1:
+                    raise
+                time.sleep(5)
     return str(path)
 
 
@@ -202,7 +216,14 @@ def _take(cand, used) -> str:
     *_, h, v = cand
     used.add(("pixabay", h["id"]))
     PICKED.append(f"pixabay:{h['id']}")
-    return _download(v["url"], CACHE / "pixabay" / f"{h['id']}_{v['width']}x{v['height']}.mp4")
+    others = sorted((x for x in h["videos"].values() if x.get("url") and x["url"] != v["url"]),
+                    key=lambda x: x["width"], reverse=True)
+    for f in [v, *others]:  # 큰 화질이 계속 막히면 작은 화질로라도
+        try:
+            return _download(f["url"], CACHE / "pixabay" / f"{h['id']}_{f['width']}x{f['height']}.mp4")
+        except requests.RequestException as e:
+            print(f"    (영상 {h['id']} {f['width']}px 받기 실패: {str(e)[:80]})")
+    raise requests.RequestException(f"영상 {h['id']} 받기 실패")
 
 
 # ---------- 여러 언어 · 다른 표현 ----------
@@ -530,8 +551,14 @@ def _breed_clip(breed: str, used, min_sec, key, context: str) -> str | None:
                 continue
             pick = pool[idx if idx is not None else 0]
             if kind == "video":
-                print(f"    🐶 {breed} 영상 사용")
-                return _take(pick, used)
+                try:
+                    path = _take(pick, used)
+                    print(f"    🐶 {breed} 영상 사용")
+                    return path
+                except requests.RequestException:  # 받기가 계속 막히면 같은 견종 사진으로
+                    print(f"    ✘ {breed} 영상 받기 실패 → 다른 영상·사진으로")
+                    rejected.add((kind, pick[3]["id"]))
+                    continue
             h = pick[3]
             used.add(("pixabay-img", h["id"]))
             PICKED.append(f"pixabay-img:{h['id']}")
@@ -555,11 +582,16 @@ def _any_dog_clip(used, min_sec, key) -> str | None:
                     if ("pixabay", h["id"]) not in used and _best_file(h)
                     and _tag_words(h.get("tags", "").lower()) & dog
                     and not _tag_words(h.get("tags", "").lower()) & SKIP_TAGS]
-            if hits:
-                hits.sort(key=lambda h: h.get("duration", 0) >= min_sec, reverse=True)
-                h = random.choice(hits[:15])
+            hits.sort(key=lambda h: h.get("duration", 0) >= min_sec, reverse=True)
+            top = hits[:15]
+            random.shuffle(top)
+            for h in top[:4]:
+                try:
+                    path = _take((0, 0, 0, h, _best_file(h)), used)
+                except requests.RequestException:
+                    continue
                 print(f"    🐕 맞는 영상이 없어 일반 강아지 영상으로 ({q})")
-                return _take((0, 0, 0, h, _best_file(h)), used)
+                return path
     for q in ("dog", "puppy", "dog illustration"):
         r = requests.get("https://pixabay.com/api/", timeout=20,
                          params={"key": key, "q": q, "per_page": 100, "safesearch": "true",
