@@ -776,5 +776,45 @@
   },
   "publish_at": "2026-11-24T18:00:00+09:00",
   "clips": []
+ },
+ {
+  "date": "2026-11-24T07:55+09:00",
+  "slot": "night",
+  "category": "walk_tips",
+  "topic": "산책 중 리드줄에 '노란 리본'을 묶은 강아지를 만났을 때 절대 다가가면 안 되는 이유",
+  "title": "산책 줄에 노란 리본이 달린 진짜 이유",
+  "file": "20261124_0755_night_산책_줄에_노란_리본이_달린_진짜_이유.mp4",
+  "video_id": "vCFPWU4Q79w",
+  "publish_at": "2026-11-24T21:00:00+09:00",
+  "clips": [
+   "pixabay:217067",
+   "pixabay:98823",
+   "pixabay:124",
+   "pixabay:45934",
+   "pixabay:159169",
+   "pixabay:598",
+   "pixabay:1076"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-24T08:02+09:00",
+  "slot": "morning",
+  "category": "behavior",
+  "topic": "틈만 나면 보호자 손과 발을 쉴 새 없이 핥아대는 강아지의 사랑스러운 속뜻",
+  "title": "강아지가 손발을 핥는 사랑스러운 이유",
+  "file": "20261124_0802_morning_강아지가_손발을_핥는_사랑스러운_이유.mp4",
+  "video_id": "-8cY1zpaCTc",
+  "publish_at": "2026-11-25T06:30:00+09:00",
+  "clips": [
+   "pixabay:98829",
+   "pixabay:129725",
+   "pixabay:110224",
+   "pixabay:47892",
+   "pixabay:78199",
+   "pixabay:110226",
+   "pixabay:153"
+  ],
+  "bgm": "game.mp3"
  }
 ]
