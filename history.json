@@ -816,5 +816,25 @@
    "pixabay:153"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-24T11:32+09:00",
+  "slot": "noon",
+  "category": "breed",
+  "topic": "모찌떡처럼 쭉쭉 늘어나는 시바견 볼살에 숨겨진 놀라운 생존 비밀",
+  "title": "시바견 볼살에 숨겨진 놀라운 비밀",
+  "file": "20261124_1132_noon_시바견_볼살에_숨겨진_놀라운_비밀.mp4",
+  "video_id": "CPxQAcQfeD0",
+  "publish_at": "2026-11-25T12:30:00+09:00",
+  "clips": [
+   "pixabay:165806",
+   "pixabay:179190",
+   "pixabay:156317",
+   "pixabay:205717",
+   "pixabay:204462",
+   "pixabay:205715",
+   "pixabay:318057"
+  ],
+  "bgm": "game.mp3"
  }
 ]
