@@ -836,5 +836,45 @@
    "pixabay:318057"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-24T20:36+09:00",
+  "slot": "evening",
+  "category": "cute",
+  "topic": "간식 주려고 하면 시키지도 않은 온갖 개인기 쏟아내는 강아지의 귀여운 이유",
+  "title": "간식 앞에서 개인기 폭발하는 이유",
+  "file": "20261124_2036_evening_간식_앞에서_개인기_폭발하는_이유.mp4",
+  "video_id": "lOtPFPHflcg",
+  "publish_at": "2026-11-25T18:00:00+09:00",
+  "clips": [
+   "pixabay:332799",
+   "pixabay:47893",
+   "pixabay:111923",
+   "pixabay:130172",
+   "pixabay:111927",
+   "pixabay:131824",
+   "pixabay:157288"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-24T20:44+09:00",
+  "slot": "night",
+  "category": "walk_tips",
+  "topic": "산책 중 다른 강아지와 인사할 때 딱 '3초'만 냄새 맡게 해야 하는 의외의 이유",
+  "title": "강아지 인사 3초만 시켜야 하는 이유",
+  "file": "20261124_2044_night_강아지_인사_3초만_시켜야_하는_이유.mp4",
+  "video_id": "1RVG_vOc6MA",
+  "publish_at": "2026-11-25T21:00:00+09:00",
+  "clips": [
+   "pixabay:231604",
+   "pixabay:109612",
+   "pixabay:26168",
+   "pixabay:98818",
+   "pixabay:49063",
+   "pixabay:219661",
+   "pixabay:248790"
+  ],
+  "bgm": "game.mp3"
  }
 ]
