@@ -876,5 +876,25 @@
    "pixabay:248790"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-25T06:29+09:00",
+  "slot": "morning",
+  "category": "breed",
+  "topic": "지능 1위 천재견 보더콜리가 보호자를 뚫어져라 '레이저 눈빛'으로 쏘는 놀라운 이유",
+  "title": "보더콜리가 레이저 눈빛을 쏘는 이유",
+  "file": "20261125_0629_morning_보더콜리가_레이저_눈빛을_쏘는_이유.mp4",
+  "video_id": "Zcl9kZAN6Ng",
+  "publish_at": "2026-11-26T06:30:00+09:00",
+  "clips": [
+   "pixabay:7259",
+   "pixabay:171030",
+   "pixabay-img:10299633",
+   "pixabay-img:8031450",
+   "pixabay-img:667488",
+   "pixabay-img:747739",
+   "pixabay-img:8259476"
+  ],
+  "bgm": "game.mp3"
  }
 ]
