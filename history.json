@@ -916,5 +916,47 @@
    "pixabay:213195"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-25T19:25+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "뭉치와 함께한 한강 산책 브이로그🐾",
+  "file": "20261125_1925_evening_play.mp4",
+  "video_id": "fNdSFIemt_4",
+  "play": {
+   "seed": 602330,
+   "cast": 38,
+   "time": "day",
+   "scenes": [
+    "futsal",
+    "photo",
+    "river",
+    "talk"
+   ]
+  },
+  "publish_at": "2026-11-26T18:00:00+09:00",
+  "clips": []
+ },
+ {
+  "date": "2026-11-25T19:44+09:00",
+  "slot": "night",
+  "category": "cute",
+  "topic": "네 발을 하늘로 번쩍 들고 '벌러덩' 뒤집어져 자는 강아지의 치명적으로 귀여운 속뜻",
+  "title": "강아지가 벌러덩 누워 자는 진짜 이유",
+  "file": "20261125_1944_night_강아지가_벌러덩_누워_자는_진짜_이유.mp4",
+  "video_id": "ziEYIQt72bI",
+  "publish_at": "2026-11-26T21:00:00+09:00",
+  "clips": [
+   "pixabay:159753",
+   "pixabay:37478",
+   "pixabay:98827",
+   "pixabay:264973",
+   "pixabay:204221",
+   "pixabay:108132",
+   "pixabay:17779"
+  ],
+  "bgm": "game.mp3"
  }
 ]
