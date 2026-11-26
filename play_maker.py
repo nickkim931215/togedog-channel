@@ -119,6 +119,39 @@ def s_dogpark(page, cam, r):
     cam.frames(5.5)
 
 
+def s_bungeo(page, cam, r):
+    """🐟 붕어빵 트럭 앞에서 붕어빵 먹기 (겨울판)"""
+    cam.skip(1)
+    cam.frames(1.6)
+    click(page, page.get_by_role("button", name=re.compile("붕어빵 먹기")))
+    cam.frames(3.8)
+
+
+def s_gift(page, cam, r):
+    """🎅 산타 선물 상자 앞에서 열기 (뼈다구 보상)"""
+    cam.skip(1)
+    cam.frames(1.8)
+    click(page, page.get_by_role("button", name=re.compile("산타 선물 열기")))
+    cam.frames(3.6)
+
+
+def s_snowrun(page, cam, r):
+    """🐾 눈 쌓인 땅을 달리기 — 발자국 · 눈가루, 멈추면 눈 냄새 킁킁"""
+    click(page, page.get_by_role("button", name="가까이", exact=True))
+    cam.skip(0.8)
+    page.keyboard.down("Shift")
+    hold(page, cam, "ArrowUp", r.uniform(2.6, 3.2))
+    page.keyboard.up("Shift")
+    cam.frames(3.2)
+
+
+def s_xmas(page, cam, r):
+    """🎄 크리스마스 트리 앞 (캐롤은 편집 때 입힘) — 서 있으면 강아지가 눈을 킁킁"""
+    cam.skip(1)
+    hold(page, cam, "ArrowUp", 1.8)
+    cam.frames(4.4)
+
+
 def s_river(page, cam, r):
     cam.skip(1)
     hold(page, cam, r.choice(["ArrowLeft", "ArrowRight"]), r.uniform(5, 6.5))
@@ -143,9 +176,30 @@ SCENES = {
     "futsal": (["futsal"], ["풋살장에서 한 판 ⚽", "강아지들은 펜스 밖에서 응원 중"], s_futsal),
     # dogpark(반려견 놀이터)는 뺌: 강아지들이 화면 밖으로 뛰어나감 (11/10 시험 · 전단 촬영)
     "river": (["-40,-46", "-60,-40"], ["한강 따라 걷기", "강바람 맞으며 산책"], s_river),
+    # ❄️ 겨울판 전용 (--snow): 붕어빵 트럭(-118,-20) · 크리스마스 트리(-106,-15)
+    "bungeo": (["-118,-16.2"], ["붕어빵 트럭 발견! 🐟", "따끈한 붕어빵 한 입 🐟"], s_bungeo),
+    "xmas": (["-106,-2", "-104,-1"], ["크리스마스 트리 앞에서 캐롤이 나와요 🎄", "트리 가까이 가면 오르골 캐롤 🎶"], s_xmas),
+    "gift": (["gift"], ["산타 선물 찾았다! 🎅", "곳곳에 숨은 산타 선물 🎁"], s_gift),
+    "snowrun": (["8,30", "12,32"], ["눈 위에 발자국이 쏙쏙 🐾", "눈 쌓인 길을 신나게 달려요 ❄️"], s_snowrun),
     # auto(자동 산책)는 뺌: 가상 시계로 찍으면 지도가 못 따라와 하늘색 빈 화면 (11/10 시험)
 }
 ENDING_AT = ["0,12", "0,16"]
+# ❄️ 겨울 시즌: 이 기간엔 자동 예약 플레이 영상이 겨울판(눈 · 붕어빵 · 트리 캐롤)으로 만들어짐 (사장님 11/26 "자동 예약에 넣어줘")
+WINTER_FROM, WINTER_TO = "2026-11-27", "2027-02-28"
+GIFT_TO = "2026-12-25"  # 산타 선물 이벤트가 끝나는 날 (이후엔 선물 장면 뺌 — 게임에 상자가 없음)
+
+
+def kst_today() -> str:
+    from datetime import datetime, timedelta, timezone
+    return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+
+
+def winter_season(today: str | None = None) -> bool:
+    return WINTER_FROM <= (today or kst_today()) <= WINTER_TO
+
+
+WINTER_SCENES = ["gift", "bungeo", "snowrun", "xmas"]  # 이번에 업데이트된 것 전부 (선물 · 붕어빵 · 눈 발자국 · 트리 캐롤)
+WINTER_ACC = {"head": ["santa-hat", "antlers-reindeer", "beanie-snow"], "neck": ["scarf-xmas", "snowflake-necklace"], "feet": ["boots-santa", "boots-snow"]}
 
 
 def open_game(browser, at: str, cfg: dict, r: random.Random):
@@ -155,7 +209,7 @@ def open_game(browser, at: str, cfg: dict, r: random.Random):
 localStorage.setItem("togedog-lang", "ko"); localStorage.setItem("togedog-lite", "0");""")
     ctx.add_init_script(VCLOCK)
     page = ctx.new_page()
-    q = f"record&seed={cfg['seed']}&n={cfg['n']}&talk={cfg['talk']}&at={at}&time={cfg['time']}"
+    q = f"record&seed={cfg['seed']}&n={cfg['n']}&talk={cfg['talk']}&at={at}&time={cfg['time']}" + ("&snow=1" if cfg.get('snow') else "") + (f"&acc={cfg['acc']}" if cfg.get('acc') else "")
     page.goto(f"{cfg['base']}/?{q}", wait_until="domcontentloaded", timeout=120000)
     go = page.get_by_role("button", name="투게독 3D 프로필 생성하기")
     go.wait_for(timeout=180000)
@@ -181,16 +235,20 @@ localStorage.setItem("togedog-lang", "ko"); localStorage.setItem("togedog-lite",
     return ctx, page
 
 
-def plan(seed: int, base: str = APP) -> dict:
+def plan(seed: int, base: str = APP, snow: bool = False) -> dict:
     r = random.Random(seed)
     n = r.choice([r.randint(8, 14), r.randint(18, 30), r.randint(32, 50)])  # 한산 · 보통 · 북적 (촬영 자리 가까운 사람부터 나옴)
-    picks = r.sample(list(SCENES), r.choice([3, 4]))
+    if snow:  # 겨울판: 업데이트된 장면을 전부(선물은 이벤트 기간만), 트리(캐롤)는 마지막
+        picks = [s for s in WINTER_SCENES if s != "gift" or kst_today() <= GIFT_TO]
+    else:
+        picks = r.sample([s for s in SCENES if s not in ("bungeo", "xmas")], r.choice([3, 4]))
     return {
-        "seed": seed, "base": base, "n": n, "talk": 8,
-        "time": r.choices(["day", "night"], weights=[7, 3])[0],
+        "seed": seed, "base": base, "n": n, "talk": 8, "snow": snow,
+        "time": r.choices(["day", "night"], weights=[7, 3] if not snow else [6, 4])[0],
         "owner": r.choice(OWNERS), "pet": r.choice(PETS),
         "scenes": [(s, r.choice(SCENES[s][0]), r.choice(SCENES[s][1])) for s in picks],
         "ending_at": r.choice(ENDING_AT),
+        "acc": ",".join(r.choice(v) for v in WINTER_ACC.values()) if snow else "",
         "bgm_from": r.randint(0, 600),
     }
 
@@ -253,7 +311,8 @@ JSON: {{"title": "...", "sentences": ["..."], "description": "...", "tags": ["..
 SCENE_DESC = {"walk": "공원 광장을 강아지와 걷기", "talk": "지나가는 이웃에게 '안녕하세요' 말풍선 인사",
               "photo": "한강 다리 앞에서 사진 모드로 강아지와 사진 찍기", "futsal": "한강 풋살장에서 풋살 (강아지들은 펜스 밖 구경)",
               "dogpark": "반려견 놀이터 벤치에 앉으니 강아지들끼리 뛰어놂", "river": "한강 산책로 따라 걷기",
-              "auto": "자동 산책", "ending": "마무리: 동네 전체를 멀리서 + 투게독 로고"}
+              "auto": "자동 산책", "bungeo": "눈 내리는 겨울, 붕어빵 트럭 앞에서 따끈한 붕어빵 먹기 (먹으면 걸음 보너스)",
+              "xmas": "큰 크리스마스 트리 앞에 서면 오르골 캐롤이 흘러나옴 (강아지는 눈 냄새를 킁킁)", "gift": "지도 곳곳에 숨은 산타 선물 상자를 찾아 열기 (뼈다구 보상, 12월 25일까지 매일 바뀜)", "snowrun": "눈이 쌓인 땅을 달리면 발자국이 남고 눈가루가 튐", "ending": "마무리: 동네 전체를 멀리서 + 투게독 로고"}
 
 
 def write_play_script(cfg: dict, names: list[str], lens: list[float]) -> dict:
@@ -267,7 +326,7 @@ def write_play_script(cfg: dict, names: list[str], lens: list[float]) -> dict:
     prompt = SCRIPT_PROMPT.format(
         scenes="\n".join(f"{i + 1}. {SCENE_DESC.get(k, k)} ({l:.0f}초)" for i, (k, l) in enumerate(zip(names, lens))),
         n=n, crowd="한산함" if n < 15 else "북적북적" if n >= 32 else "적당히 붐빔",
-        time="저녁 노을 · 가로등" if cfg["time"] == "night" else "맑은 낮",
+        time=("저녁 노을 · 가로등" if cfg["time"] == "night" else "맑은 낮") + (" · 눈이 펑펑 내리고 땅에 눈이 쌓인 겨울 (크리스마스 시즌)" if cfg.get("snow") else ""),
         owner=cfg["owner"], pet=cfg["pet"], count=len(names), chars_each=int(min(lens) * 5.5))
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=HTTP)
     resp = _generate(client, FALLBACK_MODELS, prompt,
@@ -392,10 +451,33 @@ TITLES = ["강아지랑 한강 산책하는 게임 🐶", "우리 강아지랑 �
 TONE = "밝고 다정하게, 친구에게 내 산책 브이로그를 보여 주듯 신나게"
 
 
+def add_carol(out: Path, clips: list, cfg: dict):
+    """🎄 트리 장면(xmas)이 나오는 동안 게임 속 오르골 캐롤을 깔아 준다 (촬영 로봇은 게임 소리를 못 담음)."""
+    names = [p.stem.split("_", 1)[1] for p, _ in clips]
+    if "xmas" not in names:
+        return
+    from carol_synth import synth
+    lens = [_dur(p) for p, _ in clips]
+    i = names.index("xmas")
+    start = max(0.0, sum(lens[:i]) - 0.4 * i)
+    dur = lens[i] + 0.4
+    wav = synth(dur, out.with_suffix(".carol.wav"))
+    tmp = out.with_suffix(".tmp.mp4")
+    d = int(start * 1000)
+    subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", str(out.resolve()), "-i", str(wav.resolve()),
+                    "-filter_complex", f"[1:a]adelay={d}|{d},volume=0.9[c];[0:a][c]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]",
+                    "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", str(tmp.resolve())], check=True)
+    tmp.replace(out)
+    wav.unlink(missing_ok=True)
+    print(f"  🎄 캐롤 입힘 ({start:.1f}초부터 {dur:.1f}초)")
+
+
 def make_play(out: Path, seed: int | None = None, base: str = APP, headed=False, scenes: list[str] | None = None,
-              voice: bool = True, reuse: bool = False) -> dict:
+              voice: bool = True, reuse: bool = False, snow: bool | None = None) -> dict:
     seed = seed if seed is not None else int(time.time()) % 1_000_000
-    cfg = plan(seed, base)
+    if snow is None:  # 자동: 겨울 시즌이면 겨울판
+        snow = winter_season()
+    cfg = plan(seed, base, snow)
     if scenes:  # 시험: 장면 직접 고르기
         r = random.Random(seed)
         cfg["scenes"] = [(s, r.choice(SCENES[s][0]), r.choice(SCENES[s][1])) for s in scenes]
@@ -427,6 +509,8 @@ def make_play(out: Path, seed: int | None = None, base: str = APP, headed=False,
         except Exception as e:
             print(f"  ⚠ 내레이션 실패 → 자막 + 음악만: {str(e)[:200]}")
     secs = edit(clips, cfg, out, narr)
+    if cfg.get("snow"):
+        add_carol(out, clips, cfg)
     print(f"  ✅ {out.name} ({secs:.1f}초{' · 내레이션 ' + spoken if spoken else ''})")
     return {**meta, "seed": seed, "cast": cfg["n"], "time": cfg["time"], "scenes": [s for s, _, _ in cfg["scenes"]],
             "voice": spoken}
@@ -440,7 +524,9 @@ if __name__ == "__main__":
     ap.add_argument("--headed", action="store_true")
     ap.add_argument("--scenes", help="쉼표로 (시험용)")
     ap.add_argument("--no-voice", action="store_true", help="내레이션 없이")
+    ap.add_argument("--snow", action="store_true", help="❄️ 겨울판 강제 (붕어빵 트럭 · 크리스마스 트리 · 선물 · 눈 발자국)")
+    ap.add_argument("--no-snow", action="store_true", help="겨울 시즌이어도 평소 영상으로")
     ap.add_argument("--reuse", action="store_true", help="촬영 건너뛰고 cache/play_<seed> 장면으로 편집만 (시험용)")
     a = ap.parse_args()
     Path(a.out).parent.mkdir(exist_ok=True)
-    print(json.dumps(make_play(Path(a.out), a.seed, a.base, a.headed, a.scenes.split(",") if a.scenes else None, not a.no_voice, a.reuse), ensure_ascii=False, indent=1))
+    print(json.dumps(make_play(Path(a.out), a.seed, a.base, a.headed, a.scenes.split(",") if a.scenes else None, not a.no_voice, a.reuse, True if a.snow else (False if a.no_snow else None)), ensure_ascii=False, indent=1))
