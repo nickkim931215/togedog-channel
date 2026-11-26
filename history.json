@@ -978,5 +978,46 @@
    "pixabay:109613"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-26T19:00+09:00",
+  "slot": "evening",
+  "category": "walk_tips",
+  "topic": "어두운 저녁 산책할 때 강아지 LED 조명을 '깜빡이 모드'로 켜면 안 되는 의외의 이유",
+  "title": "강아지 LED 조명 깜빡이면 안 되는 이유",
+  "file": "20261126_1900_evening_강아지_LED_조명_깜빡이면_안_되는_이유.mp4",
+  "video_id": "2O6mzlvAR1s",
+  "publish_at": "2026-11-27T18:00:00+09:00",
+  "clips": [
+   "pixabay:183575",
+   "pixabay:189876",
+   "pixabay:115606",
+   "pixabay:9492",
+   "pixabay:133959",
+   "pixabay:62488",
+   "pixabay:117640",
+   "pixabay:237916"
+  ],
+  "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-26T19:07+09:00",
+  "slot": "night",
+  "category": "breed",
+  "topic": "세상에서 제일 평화로운 '눕방 장인' 시츄가 웬만해선 절대 짖지 않는 놀라운 이유",
+  "title": "시츄가 웬만해선 안 짖는 놀라운 이유",
+  "file": "20261126_1907_night_시츄가_웬만해선_안_짖는_놀라운_이유.mp4",
+  "video_id": "whvQ5-vB3VI",
+  "publish_at": "2026-11-27T21:00:00+09:00",
+  "clips": [
+   "pixabay-img:9592911",
+   "pixabay-img:7847691",
+   "pixabay-img:164911",
+   "pixabay-img:8287355",
+   "pixabay-img:7560734",
+   "pixabay-img:17788",
+   "pixabay-img:6088073"
+  ],
+  "bgm": "game.mp3"
  }
 ]
