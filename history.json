@@ -1019,5 +1019,25 @@
    "pixabay-img:6088073"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-27T05:31+09:00",
+  "slot": "morning",
+  "category": "cute",
+  "topic": "하네스만 채우면 고장 난 로봇처럼 제자리에 '얼음' 굳어버리는 강아지의 귀여운 이유",
+  "title": "하네스 차면 얼음 되는 귀여운 이유",
+  "file": "20261127_0531_morning_하네스_차면_얼음_되는_귀여운_이유.mp4",
+  "video_id": "gO73W2ZAF6k",
+  "publish_at": "2026-11-28T06:30:00+09:00",
+  "clips": [
+   "pixabay:111928",
+   "pixabay:222838",
+   "pixabay:111925",
+   "pixabay:85772",
+   "pixabay:132257",
+   "pixabay:111922",
+   "pixabay:147191"
+  ],
+  "bgm": "game.mp3"
  }
 ]
