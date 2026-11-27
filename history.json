@@ -1059,5 +1059,47 @@
    "pixabay:109819"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-27T19:06+09:00",
+  "slot": "evening",
+  "category": "play",
+  "topic": "투게독 플레이",
+  "title": "눈 오는 날 강아지와 크리스마스 산책 ❄️",
+  "file": "20261127_1906_evening_play.mp4",
+  "video_id": "K4g2LV0dHaA",
+  "play": {
+   "seed": 773984,
+   "cast": 46,
+   "time": "day",
+   "scenes": [
+    "gift",
+    "bungeo",
+    "snowrun",
+    "xmas"
+   ]
+  },
+  "publish_at": "2026-11-28T18:00:00+09:00",
+  "clips": []
+ },
+ {
+  "date": "2026-11-27T19:28+09:00",
+  "slot": "night",
+  "category": "behavior",
+  "topic": "눈 마주치면 앞다리 쭉 뻗고 '큰절 기지개' 켜는 강아지의 심쿵 속뜻",
+  "title": "강아지가 눈 마주치고 큰절하는 이유",
+  "file": "20261127_1928_night_강아지가_눈_마주치고_큰절하는_이유.mp4",
+  "video_id": "l1dDh3bs6kw",
+  "publish_at": "2026-11-28T21:00:00+09:00",
+  "clips": [
+   "pixabay:178030",
+   "pixabay:28722",
+   "pixabay:26852",
+   "pixabay:4740",
+   "pixabay:2997",
+   "pixabay:65438",
+   "pixabay:62911"
+  ],
+  "bgm": "game.mp3"
  }
 ]
