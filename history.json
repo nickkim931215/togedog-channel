@@ -1121,5 +1121,25 @@
    "pixabay:74257"
   ],
   "bgm": "game.mp3"
+ },
+ {
+  "date": "2026-11-28T11:08+09:00",
+  "slot": "noon",
+  "category": "walk_tips",
+  "topic": "바람 많이 부는 날 산책 나가면 강아지가 유독 흥분하고 예민해지는 의외의 이유",
+  "title": "바람 부는 날 강아지가 흥분하는 의외의 이유",
+  "file": "20261128_1108_noon_바람_부는_날_강아지가_흥분하는_의외의_이유.mp4",
+  "video_id": "xHkslwfmCus",
+  "publish_at": "2026-11-29T12:30:00+09:00",
+  "clips": [
+   "pixabay:115586",
+   "pixabay:65300",
+   "pixabay:237003",
+   "pixabay:367907",
+   "pixabay:65299",
+   "pixabay:306120",
+   "pixabay:24567"
+  ],
+  "bgm": "game.mp3"
  }
 ]
